@@ -512,14 +512,11 @@ function classify(text){
 }
 
 async function aiProcess(raw){
-  const prompt="Tu es l'assistant d'un entrepreneur qui capture des idées à la volée à l'oral. Voici la transcription brute d'une idée dictée :\n\n\"\"\""+raw+"\"\"\"\n\nReformule-la au propre, en français, à la première personne, façon note d'entrepreneur : claire, structurée, fidèle au sens (n'invente aucune information, ne rajoute pas de détails absents). Enlève les hésitations et répétitions. Garde-la concise.\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans backticks, au format exact :\n{\"title\":\"un titre court et percutant, max 6 mots, sans point final\",\"reformulated\":\"l'idée reformulée au propre\"}";
   try{
-    if(!(window.claude && typeof window.claude.complete==='function')) throw new Error('no bridge');
-    const text=await window.claude.complete(prompt);
-    const clean=String(text||'').replace(/```json|```/g,'').trim();
-    const match=clean.match(/\{[\s\S]*\}/);
-    const p=JSON.parse(match?match[0]:clean);
-    if(!p.title||!p.reformulated)throw new Error('shape');
+    const r=await fetch('/api/reformulate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({raw})});
+    if(!r.ok)throw new Error('http '+r.status);
+    const p=await r.json();
+    if(!p.title||!p.reformulated)throw new Error('format');
     return {title:String(p.title).trim(),text:String(p.reformulated).trim(),ai:true};
   }catch(e){return localProcess(raw);}
 }
