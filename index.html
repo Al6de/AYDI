@@ -1059,19 +1059,29 @@ function bindDev(el,i){
 async function aiDevelop(i){
   const btn=document.querySelector('.rowB[data-id="'+i.id+'"] [data-devai]');
   if(btn){btn.disabled=true;btn.innerHTML='<span class="s"></span> L\'IA réfléchit…';}
-  let res=null;
-  try{
-    if(!(window.claude&&window.claude.complete))throw 0;
-    const prompt="Voici une idée d'entrepreneur à développer.\nTitre : "+i.title+"\nDescription : "+i.text+"\n\nPropose un plan concret pour la développer. Réponds UNIQUEMENT en JSON valide, sans texte ni backticks, au format exact :\n{\"subs\":[{\"title\":\"sous-idée courte (max 6 mots)\",\"text\":\"une phrase d'explication\"}],\"tasks\":[\"tâche actionnable courte\"]}\nDonne 2 à 3 sous-idées et 3 à 5 tâches, en français, à la première personne. N'invente pas de faits, reste fidèle à l'idée.";
-    const text=await window.claude.complete(prompt);
-    const clean=String(text||'').replace(/```json|```/g,'').trim();const m=clean.match(/\{[\s\S]*\}/);res=JSON.parse(m?m[0]:clean);
-  }catch(e){res=null;}
   i.subs=i.subs||[];i.tasks=i.tasks||[];
-  if(res&&(Array.isArray(res.subs)||Array.isArray(res.tasks))){
-    (res.subs||[]).forEach(s=>{if(s&&(s.title||s.text))i.subs.push({id:uid(),title:String(s.title||'').trim(),text:String(s.text||'').trim()});});
-    (res.tasks||[]).forEach(t=>{const v=String(t||'').trim();if(v)i.tasks.push({id:uid(),text:v,done:false});});
+  try{
+    const r=await fetch('/api/develop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:i.title,text:i.text})});
+    if(!r.ok)throw new Error('http '+r.status);
+    const data=await r.json();
+    const dev=String(data.development||'').trim();
+    if(!dev)throw new Error('empty');
+    // Découpe sur les sections numérotées (1. 2. 3. 4.)
+    const sections=dev.split(/\n(?=\d+\.)/);
+    sections.forEach(sec=>{
+      const lines=sec.trim().split('\n').filter(l=>l.trim());
+      if(!lines.length)return;
+      const header=lines[0].replace(/^\d+\.\s*/,'').trim();
+      const body=lines.slice(1).map(l=>l.trim()).filter(Boolean).join('\n');
+      // Section "actions concrètes" → tâches
+      if(/actions?\s*concrètes?|cette semaine/i.test(header)){
+        lines.slice(1).forEach(l=>{const t=l.replace(/^[-•*\d.]\s*/,'').trim();if(t)i.tasks.push({id:uid(),text:t,done:false});});
+      }else{
+        i.subs.push({id:uid(),title:header.slice(0,50),text:body||header});
+      }
+    });
     saveIdeas();renderIdeas();toast('✨ Idée développée par l\'IA');
-  }else{
+  }catch(e){
     i.subs.push({id:uid(),title:'Angle à creuser',text:'Note ici une variante ou un angle complémentaire.'});
     i.tasks.push({id:uid(),text:'Définir la première étape concrète',done:false},{id:uid(),text:'Identifier ce dont j\'ai besoin',done:false});
     saveIdeas();renderIdeas();toast('IA indispo — base à compléter ajoutée');

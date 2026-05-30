@@ -2,6 +2,9 @@
   "functions": {
     "api/reformulate.js": {
       "runtime": "nodejs18.x"
+    },
+    "api/develop.js": {
+      "runtime": "nodejs18.x"
     }
   }
 }
