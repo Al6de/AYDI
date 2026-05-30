@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/reformulate.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}
