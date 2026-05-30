@@ -1060,18 +1060,25 @@ async function aiDevelop(i){
   const btn=document.querySelector('.rowB[data-id="'+i.id+'"] [data-devai]');
   if(btn){btn.disabled=true;btn.innerHTML='<span class="s"></span> L\'IA réfléchit…';}
   i.subs=i.subs||[];i.tasks=i.tasks||[];
+  let ok=false;
   try{
     const r=await fetch('/api/develop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:i.title,text:i.text})});
-    if(!r.ok)throw new Error('http '+r.status);
+    if(!r.ok){const detail=await r.text();throw new Error('HTTP '+r.status+' — '+detail);}
     const data=await r.json();
-    if(!data.subs&&!data.tasks)throw new Error('empty');
+    if(!data.subs&&!data.tasks)throw new Error('Réponse vide');
     (data.subs||[]).forEach(s=>{if(s&&(s.title||s.text))i.subs.push({id:uid(),title:String(s.title||'').trim(),text:String(s.text||'').trim()});});
     (data.tasks||[]).forEach(t=>{const v=String(t||'').trim();if(v)i.tasks.push({id:uid(),text:v,done:false});});
+    ok=true;
     saveIdeas();renderIdeas();toast('✨ Idée développée par l\'IA');
   }catch(e){
-    i.subs.push({id:uid(),title:'Angle à creuser',text:'Note ici une variante ou un angle complémentaire.'});
-    i.tasks.push({id:uid(),text:'Définir la première étape concrète',done:false},{id:uid(),text:'Identifier ce dont j\'ai besoin',done:false});
-    saveIdeas();renderIdeas();toast('IA indispo — base à compléter ajoutée');
+    console.error('[aiDevelop]',e);
+    if(!ok){
+      i.subs.push({id:uid(),title:'Angle à creuser',text:'Note ici une variante ou un angle complémentaire.'});
+      i.tasks.push({id:uid(),text:'Définir la première étape concrète',done:false},{id:uid(),text:'Identifier ce dont j\'ai besoin',done:false});
+      saveIdeas();renderIdeas();toast('IA indispo : '+e.message);
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML='✨ Développer avec l\'IA';}
   }
 }
 
