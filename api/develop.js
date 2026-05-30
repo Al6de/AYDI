@@ -11,12 +11,9 @@ module.exports = async function handler(req, res) {
   const prompt =
     "Tu es le coach business d'un entrepreneur. Voici une idée capturée :\n\n" +
     "Titre : " + title + "\nIdée : " + text + "\n\n" +
-    "Développe cette idée de façon concrète et actionnable. Donne :\n" +
-    "1. Une analyse rapide du potentiel\n" +
-    "2. Les 3 premières actions concrètes à faire cette semaine\n" +
-    "3. Les ressources ou compétences nécessaires\n" +
-    "4. Un angle ou variante intéressante à explorer\n\n" +
-    "Sois précis, direct, orienté action. Pas de blabla. Réponds en français.";
+    "Développe cette idée. Réponds UNIQUEMENT en JSON valide sans backticks, format exact :\n" +
+    '{"subs":[{"title":"sous-idée courte max 6 mots","text":"une phrase d\'explication concrète"}],"tasks":["tâche actionnable courte"]}\n' +
+    "Donne 2 à 3 sous-idées (angles, variantes, ressources) et 3 à 5 tâches concrètes pour cette semaine. En français, à la première personne. Reste fidèle à l'idée, n'invente rien.";
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -33,8 +30,9 @@ module.exports = async function handler(req, res) {
     });
     if (!r.ok) return res.status(502).json({ error: "Erreur API", detail: await r.text() });
     const data = await r.json();
-    const text_response = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-    return res.status(200).json({ development: text_response });
+    const raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    return res.status(200).json({ subs: parsed.subs || [], tasks: parsed.tasks || [] });
   } catch(e) {
     return res.status(500).json({ error: "Echec", detail: String(e) });
   }

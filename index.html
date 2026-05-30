@@ -1064,22 +1064,9 @@ async function aiDevelop(i){
     const r=await fetch('/api/develop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:i.title,text:i.text})});
     if(!r.ok)throw new Error('http '+r.status);
     const data=await r.json();
-    const dev=String(data.development||'').trim();
-    if(!dev)throw new Error('empty');
-    // Découpe sur les sections numérotées (1. 2. 3. 4.)
-    const sections=dev.split(/\n(?=\d+\.)/);
-    sections.forEach(sec=>{
-      const lines=sec.trim().split('\n').filter(l=>l.trim());
-      if(!lines.length)return;
-      const header=lines[0].replace(/^\d+\.\s*/,'').trim();
-      const body=lines.slice(1).map(l=>l.trim()).filter(Boolean).join('\n');
-      // Section "actions concrètes" → tâches
-      if(/actions?\s*concrètes?|cette semaine/i.test(header)){
-        lines.slice(1).forEach(l=>{const t=l.replace(/^[-•*\d.]\s*/,'').trim();if(t)i.tasks.push({id:uid(),text:t,done:false});});
-      }else{
-        i.subs.push({id:uid(),title:header.slice(0,50),text:body||header});
-      }
-    });
+    if(!data.subs&&!data.tasks)throw new Error('empty');
+    (data.subs||[]).forEach(s=>{if(s&&(s.title||s.text))i.subs.push({id:uid(),title:String(s.title||'').trim(),text:String(s.text||'').trim()});});
+    (data.tasks||[]).forEach(t=>{const v=String(t||'').trim();if(v)i.tasks.push({id:uid(),text:v,done:false});});
     saveIdeas();renderIdeas();toast('✨ Idée développée par l\'IA');
   }catch(e){
     i.subs.push({id:uid(),title:'Angle à creuser',text:'Note ici une variante ou un angle complémentaire.'});
