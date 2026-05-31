@@ -234,14 +234,6 @@
   .icon-preview .ip-emoji{display:grid;place-items:center}
   .icon-preview .ip-emoji img{width:34px;height:34px;display:block}
   .emoji-picker{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
-  .ep-top{display:flex;gap:8px;align-items:center}
-  .ep-search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:40px;background:var(--bg-2);border:1px solid var(--border-strong);border-radius:12px;padding:0 12px}
-  .ep-search>svg{color:var(--text-3);flex-shrink:0}
-  .ep-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font-family:var(--sans);font-size:14.5px}
-  .ep-search input::placeholder{color:var(--text-3)}
-  .ep-style{display:flex;gap:3px;background:var(--bg-2);border:1px solid var(--border);border-radius:11px;padding:3px;flex-shrink:0}
-  .ep-style button{border:none;background:none;color:var(--text-3);font-family:var(--sans);font-size:11.5px;font-weight:600;padding:6px 8px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;transition:.15s}
-  .ep-style button.on{background:var(--surface-3);color:var(--text)}
   .ep-cats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
   .ep-cats::-webkit-scrollbar{display:none}
   .ep-cats button{flex-shrink:0;width:34px;height:34px;border:1px solid transparent;background:none;border-radius:9px;font-size:17px;cursor:pointer;display:grid;place-items:center;opacity:.55;transition:.15s}
@@ -255,8 +247,6 @@
   .ep-cell img{width:23px;height:23px;display:block;pointer-events:none}
   .ep-cat-label{grid-column:1/-1;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:9px 4px 3px;position:sticky;top:-3px;background:var(--bg-2);z-index:1}
   .ep-empty{grid-column:1/-1;text-align:center;color:var(--text-3);font-size:13px;padding:32px 8px}
-  .ep-plat-note{font-size:11px;color:var(--text-3);text-align:center;line-height:1.4}
-  .ep-plat-note b{color:var(--text-2);font-weight:600}
   .folder-create-row{display:flex;gap:12px;align-items:center;margin-bottom:10px}
   .folder-create-row input{flex:1;width:auto;min-width:0;margin-bottom:0}
   .icon-preview{width:58px;height:58px;flex-shrink:0;border-radius:16px;display:grid;place-items:center;font-size:30px;position:relative;overflow:hidden;background:radial-gradient(circle at 38% 30%, rgba(255,176,52,.18), transparent 60%),var(--bg-2);border:1px solid var(--border-strong);box-shadow:inset 0 0 14px rgba(255,176,52,.12)}
@@ -553,16 +543,8 @@
       </div>
       <div class="icon-suggest-lbl" id="iconSuggestLbl">Tape un nom, l’IA choisit l’icône ✨</div>
       <div class="emoji-picker" id="emojiPicker">
-        <div class="ep-top">
-          <div class="ep-search">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4-4"></path></svg>
-            <input type="text" id="emojiSearch" placeholder="Chercher un emoji…" autocomplete="off">
-          </div>
-          <div class="ep-style" id="epStyle"></div>
-        </div>
         <div class="ep-cats" id="epCats"></div>
         <div class="ep-grid" id="epGrid"></div>
-        <div class="ep-plat-note" id="epPlatNote"></div>
       </div>
       <div class="parent-pick" id="parentPick" style="display:none"></div>
       <button class="folder-delete" id="deleteFolderBtn" style="display:none">🗑 Supprimer ce classeur</button>
@@ -1166,7 +1148,7 @@ const folderModal=document.getElementById('folderModal'),folderNameInput=documen
 let pickedIcon='💡',manualIcon=false,aiReqToken=0,iconDebounce=null;
 function extractEmoji(t){if(!t)return null;const s=String(t).trim();const m=s.match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/u);return m?m[0]:null;}
 function localPickIcon(name){const n=norm(name);const map={tiktok:'🎬',business:'💼',produit:'🛠️',marketing:'🚀',perso:'🧠'};for(const k in BANKS){if(n.includes(k)||BANKS[k].some(w=>w.length>3&&n.includes(w)))return map[k]||'💡';}let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;return ICONS[h%ICONS.length];}
-async function aiPickIcon(name){try{if(!(window.claude&&window.claude.complete))throw 0;const t=await window.claude.complete("Choisis UN seul emoji, pertinent et un peu fun, pour représenter un classeur d'idées intitulé : \""+name+"\". Réponds UNIQUEMENT avec l'emoji, sans aucun texte, espace ni ponctuation.");const em=extractEmoji(t);if(em)return {emoji:em,ai:true};throw 0;}catch(e){return {emoji:localPickIcon(name),ai:false};}}
+async function aiPickIcon(name){try{const r=await fetch('/api/pick-icon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});if(!r.ok)throw new Error('http '+r.status);const {emoji}=await r.json();const em=extractEmoji(emoji);if(em)return {emoji:em,ai:true};throw new Error('no emoji');}catch(e){return {emoji:localPickIcon(name),ai:false};}}
 function setPreview(em,fromAI){pickedIcon=em;const ip=iconPreview.querySelector('.ip-emoji');ip.innerHTML=(typeof epStyleMode!=='undefined'&&epStyleMode!=='native')?epEmojiHTML(em):esc(em);iconPreview.classList.remove('pop');void iconPreview.offsetWidth;iconPreview.classList.add('pop');iconSuggestLbl.innerHTML=fromAI?"<b>✨ Icône proposée par l'IA</b> · ou pioche :":"Icône · ou pioche :";if(typeof epHighlight==='function')epHighlight(em);}
 
 // ===== Sélecteur d'emojis complet · style iOS / Android =====
@@ -1181,26 +1163,16 @@ const EMOJI_CATS=[
  {key:'symbols',name:'Symboles',icon:'❤️',list:['❤️ coeur amour rouge','🧡 coeur orange','💛 coeur jaune','💚 coeur vert','💙 coeur bleu','💜 coeur violet','🖤 coeur noir','🤍 coeur blanc','💖 coeur brillant','💘 coeur fleche cupidon','💝 coeur cadeau','⭐ etoile star','🌟 etoile brillante','✨ etincelles magie sparkle','⚡ eclair energie foudre','🔥 feu tendance hot viral','💥 explosion boom impact','💫 vertige etoile','🌈 arc en ciel','☀️ soleil','🌙 lune','✅ valide ok coche fait','❌ croix non erreur','❓ question','❗ exclamation important','💯 cent parfait top','🔝 top haut meilleur','🔜 bientot soon','♻️ recyclage eco','⚠️ attention danger warning','🚫 interdit non','💬 bulle message chat','💭 pensee idee bulle','🔍 loupe recherche zoom','➕ plus ajouter','➖ moins','✔️ coche valide','🆕 nouveau new','🆓 gratuit free','🔁 repeter boucle','▶️ play lecture','⏸️ pause','🔊 son volume','🔇 muet','🎯 cible','🏳️‍🌈 fierte arc en ciel']},
  {key:'flags',name:'Drapeaux',icon:'🏁',list:['🏁 arrivee course damier','🚩 drapeau rouge','🏳️ drapeau blanc','🏴 drapeau noir','🇫🇷 france francais','🇧🇪 belgique','🇨🇭 suisse','🇨🇦 canada','🇺🇸 usa etats unis americain','🇬🇧 royaume uni angleterre','🇩🇪 allemagne','🇪🇸 espagne','🇮🇹 italie','🇵🇹 portugal','🇳🇱 pays bas','🇯🇵 japon japonais','🇰🇷 coree','🇨🇳 chine','🇮🇳 inde','🇧🇷 bresil','🇲🇽 mexique','🇲🇦 maroc','🇩🇿 algerie','🇹🇳 tunisie','🇸🇳 senegal','🇨🇮 cote ivoire','🇪🇺 europe union']}
 ];
-function epDetectPlatform(){const ua=navigator.userAgent||'',p=navigator.platform||'';if(/iPhone|iPad|iPod/i.test(ua)||(p==='MacIntel'&&navigator.maxTouchPoints>1))return'ios';if(/Android/i.test(ua))return'android';if(/Mac/i.test(p))return'ios';return'other';}
-const EP_PLATFORM=epDetectPlatform();
-let epStyleMode = 'native';
-const EP_STYLES=[{k:'native',lbl:'Système',e:'📱'},{k:'apple',lbl:'iOS',e:'🍎'},{k:'google',lbl:'Android',e:'🤖'}];
-const epGrid=document.getElementById('epGrid'),epCats=document.getElementById('epCats'),epStyleEl=document.getElementById('epStyle'),epSearch=document.getElementById('emojiSearch'),epPlatNote=document.getElementById('epPlatNote');
-let epQuery='';
-function epEmojiHTML(e){if(epStyleMode==='native')return esc(e);return '<img loading="lazy" src="https://emojicdn.elk.sh/'+encodeURIComponent(e)+'?style='+epStyleMode+'" alt="'+e+'" onerror="this.outerHTML=this.alt">';}
+const epStyleMode='native';
+const epGrid=document.getElementById('epGrid'),epCats=document.getElementById('epCats');
+function epEmojiHTML(e){return esc(e);}
 function epParse(s){const i=s.indexOf(' ');return i<0?{e:s,kw:''}:{e:s.slice(0,i),kw:s.slice(i+1)};}
-function epCellHTML(e){return '<button class="ep-cell'+(e===pickedIcon?' sel':'')+'" data-e="'+e+'">'+epEmojiHTML(e)+'</button>';}
-function epUpdateNote(){const dev=EP_PLATFORM==='ios'?'iOS':EP_PLATFORM==='android'?'Android':'ordinateur';epPlatNote.innerHTML=(epStyleMode==='native')?('Rendu natif de ton appareil · <b>'+dev+'</b>'):('Aperçu forcé en style <b>'+(epStyleMode==='google'?'Android':'iOS')+'</b> · appareil : <b>'+dev+'</b>');}
-function epUpdatePreview(){const ip=iconPreview&&iconPreview.querySelector('.ip-emoji');if(ip)ip.innerHTML=(epStyleMode==='native')?esc(pickedIcon):epEmojiHTML(pickedIcon);}
+function epCellHTML(e){return '<button class="ep-cell'+(e===pickedIcon?' sel':'')+'" data-e="'+e+'">'+esc(e)+'</button>';}
 function epHighlight(em){epGrid.querySelectorAll('.ep-cell').forEach(c=>c.classList.toggle('sel',c.dataset.e===em));}
-function epRenderStyles(){epStyleEl.innerHTML='';EP_STYLES.forEach(s=>{const b=document.createElement('button');b.className=(epStyleMode===s.k?'on':'');b.innerHTML=s.e+' '+s.lbl;b.onclick=()=>{epStyleMode=s.k;epRenderStyles();epRenderGrid();epUpdateNote();epUpdatePreview();};epStyleEl.appendChild(b);});}
-function epRenderCats(){epCats.innerHTML='';EMOJI_CATS.forEach(c=>{const b=document.createElement('button');b.innerHTML=c.icon;b.title=c.name;b.onclick=()=>{epSearch.value='';epQuery='';epRenderGrid();const lab=document.getElementById('epcat-'+c.key);if(lab)epGrid.scrollTo({top:Math.max(0,lab.offsetTop-3),behavior:'smooth'});};epCats.appendChild(b);});}
+function epRenderCats(){epCats.innerHTML='';EMOJI_CATS.forEach(c=>{const b=document.createElement('button');b.innerHTML=c.icon;b.title=c.name;b.onclick=()=>{const lab=document.getElementById('epcat-'+c.key);if(lab)epGrid.scrollTo({top:Math.max(0,lab.offsetTop-3),behavior:'smooth'});};epCats.appendChild(b);});}
 function epBindCells(){epGrid.querySelectorAll('.ep-cell').forEach(b=>b.onclick=()=>{manualIcon=true;aiReqToken++;clearTimeout(iconDebounce);iconPreview.classList.remove('loading');setPreview(b.dataset.e,false);});}
-function epRenderGrid(){let html='';if(epQuery){const q=norm(epQuery);let hits=[];EMOJI_CATS.forEach(c=>c.list.forEach(s=>{const o=epParse(s);if(o.e===epQuery||norm(o.kw).split(' ').some(w=>w&&(w.startsWith(q)||w.includes(q))))hits.push(o.e);}));hits=[...new Set(hits)];html=hits.length?hits.map(epCellHTML).join(''):'<div class="ep-empty">Aucun emoji pour « '+esc(epQuery)+' »</div>';}else{EMOJI_CATS.forEach(c=>{html+='<div class="ep-cat-label" id="epcat-'+c.key+'">'+c.name+'</div>'+c.list.map(s=>epCellHTML(epParse(s).e)).join('');});}epGrid.innerHTML=html;epBindCells();if(epStyleMode!=='native'){clearTimeout(epFbT);epFbT=setTimeout(epFallback,3000);}}
-let epFbT=null;
-function epFallback(){[...epGrid.querySelectorAll('.ep-cell img')].forEach(im=>{if(!(im.complete&&im.naturalWidth>0))im.replaceWith(document.createTextNode(im.getAttribute('alt')||''));});const pi=iconPreview&&iconPreview.querySelector('.ip-emoji img');if(pi&&!(pi.complete&&pi.naturalWidth>0))pi.replaceWith(document.createTextNode(pi.getAttribute('alt')||''));}
-epSearch.addEventListener('input',()=>{epQuery=epSearch.value.trim();epRenderGrid();epGrid.scrollTop=0;});
-epRenderStyles();epRenderCats();epRenderGrid();epUpdateNote();
+function epRenderGrid(){let html='';EMOJI_CATS.forEach(c=>{html+='<div class="ep-cat-label" id="epcat-'+c.key+'">'+c.name+'</div>'+c.list.map(s=>epCellHTML(epParse(s).e)).join('');});epGrid.innerHTML=html;epBindCells();}
+epRenderCats();epRenderGrid();
 let editingFolderId=null;
 const folderModalTitle=document.getElementById('folderModalTitle'),folderModalDesc=document.getElementById('folderModalDesc'),deleteFolderBtn=document.getElementById('deleteFolderBtn'),createFolderBtn=document.getElementById('createFolder');
 function renderParentPick(excludeId){
