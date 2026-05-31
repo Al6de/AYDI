@@ -1445,8 +1445,9 @@ const _hasToken=!!_hashParams.get('access_token');
 
 async function supaCheckPremium(userId){
   try{
-    const {data,error}=await _supa.from('profiles').select('is_premium').eq('id',userId).single();
-    if(!error&&data&&data.is_premium){
+    const r=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId})});
+    const d=await r.json();
+    if(d.premium){
       premium=true;
       store.set('flow_premium','1');
       updateQuotaUI();
