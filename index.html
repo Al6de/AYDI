@@ -1208,9 +1208,8 @@ function openPaywall(reason){
   else r.innerHTML='Classeurs et idées <b>illimités</b>, pour capturer sans aucune limite.';
   payModal.classList.add('show');
 }
-document.getElementById('subscribeBtn').onclick=async()=>{
-  const btn=document.getElementById('subscribeBtn');
-  btn.disabled=true;btn.textContent='Redirection vers Stripe…';
+async function goToStripe(btnEl){
+  if(btnEl){btnEl.disabled=true;btnEl.textContent='Redirection vers Stripe…';}
   try{
     const {data:{session}}=await _supa.auth.getSession();
     const email=session?.user?.email||'';
@@ -1219,10 +1218,11 @@ document.getElementById('subscribeBtn').onclick=async()=>{
     const {url}=await r.json();
     window.location.href=url;
   }catch(e){
-    btn.disabled=false;btn.textContent='Passer en illimité';
+    if(btnEl){btnEl.disabled=false;btnEl.textContent='Passer en illimité';}
     toast('Erreur Stripe : '+e.message);
   }
-};
+}
+document.getElementById('subscribeBtn').onclick=function(){goToStripe(this);};
 document.getElementById('payLater').onclick=closeAll;
 
 function updateQuotaUI(){
@@ -1232,7 +1232,7 @@ function updateQuotaUI(){
   const left=ideasLeft();
   qh.style.display='flex';
   qh.innerHTML=(left>0?'<span><b style="color:var(--text-2)">'+left+'</b> idée'+(left>1?'s':'')+' gratuite'+(left>1?'s':'')+" aujourd'hui</span>":'<span class="full">Limite gratuite du jour atteinte</span>')+'<button class="qh-up" id="qhUp">Passer en illimité</button>';
-  const up=document.getElementById('qhUp');if(up)up.onclick=()=>openPaywall('idea');
+  const up=document.getElementById('qhUp');if(up)up.onclick=function(){goToStripe(this);};
 }
 
 function renderPlanCard(){
@@ -1245,7 +1245,7 @@ function renderPlanCard(){
     ensureQuotaDay();
     pc.className='plan-card';
     pc.innerHTML='<div class="pc-row"><span class="pc-badge">Gratuit</span><button class="pc-up" id="pcUp">Passer en illimité · 5,99 €</button></div><div class="pc-quota"><span>Classeurs <b>'+folders.length+'/'+FREE_FOLDERS+'</b></span><span>Idées aujourd\'hui <b>'+quota.count+'/'+FREE_IDEAS+'</b></span></div>';
-    const u=document.getElementById('pcUp');if(u)u.onclick=()=>openPaywall();
+    const u=document.getElementById('pcUp');if(u)u.onclick=function(){goToStripe(this);};
   }
 }
 
