@@ -1443,16 +1443,12 @@ obForm.addEventListener('submit',async e=>{
 const _hashParams=new URLSearchParams(window.location.hash.substring(1));
 const _hasToken=!!_hashParams.get('access_token');
 
-async function supaCheckPremium(userId){
-  try{
-    const r=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId})});
-    const d=await r.json();
-    if(d.premium){
-      premium=true;
-      store.set('flow_premium','1');
-      updateQuotaUI();
-    }
-  }catch(e){}
+function applyPremiumFromSession(user){
+  if(user?.user_metadata?.is_premium){
+    premium=true;
+    store.set('flow_premium','1');
+    updateQuotaUI();
+  }
 }
 
 _supa.auth.onAuthStateChange(async(event,session)=>{
@@ -1466,8 +1462,8 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
+    applyPremiumFromSession(session.user);
     await supaLoadIdeas(session.user.id);
-    await supaCheckPremium(session.user.id);
     renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
     USER_NAME='';applyGreeting();
