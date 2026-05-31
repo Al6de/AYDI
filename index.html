@@ -747,12 +747,14 @@ async function supaDeleteIdea(id){
     if(error)throw error;
   }catch(e){console.warn('[supa:del]',e);}
 }
-async function supaLoadIdeas(){
+async function supaLoadIdeas(userId){
   try{
-    const {data:{session}}=await _supa.auth.getSession();
-    if(!session)return;
-    const {data,error}=await _supa.from('ideas').select('*').eq('user_id',session.user.id);
-    if(error)throw error;
+    const uid=userId||(await _supa.auth.getSession()).data?.session?.user?.id;
+    if(!uid){console.warn('[supaLoadIdeas] no user id');return;}
+    console.log('[supaLoadIdeas] chargement pour user:',uid);
+    const {data,error}=await _supa.from('ideas').select('*').eq('user_id',uid);
+    if(error){console.error('[supaLoadIdeas] erreur:',error);throw error;}
+    console.log('[supaLoadIdeas]',data.length,'idée(s) trouvée(s) dans Supabase');
     if(data.length>0){
       ideas=data.map(r=>({
         id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
@@ -765,7 +767,10 @@ async function supaLoadIdeas(){
     }else{
       // Pas d'idées dans Supabase — migrer le localStorage existant si besoin
       const local=JSON.parse(store.get(IDEA_KEY)||'[]');
-      if(local.length>0){ideas=local;clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,300);}
+      if(local.length>0){
+        console.log('[supaLoadIdeas] migration de',local.length,'idée(s) locale(s) vers Supabase');
+        ideas=local;clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,300);
+      }
     }
   }catch(e){console.warn('[supa:load]',e);}
 }
@@ -1424,7 +1429,7 @@ function showOnboarding(mode){
 }
 
 async function logout(){
-  await _supa.auth.signOut();
+  try{await _supa.auth.signOut();}catch(e){console.error('[logout]',e);}
   showOnboarding('login');
 }
 
@@ -1467,7 +1472,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
-    await supaLoadIdeas();
+    await supaLoadIdeas(session.user.id);
     renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
     USER_NAME='';applyGreeting();
@@ -1477,7 +1482,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
 
 // Si un token est dans l'URL, onAuthStateChange va gérer la session —
 // ne pas afficher l'onboarding depuis ici pour éviter le flash
-_supa.auth.getSession().then(({data:{session}})=>{if(!session&&!_hasToken)showOnboarding('signup');});
+_supa.auth.getSession().then(({data:{session}})=>{if(!session&&!_hasToken)showOnboarding('login');});
 
 // Retour depuis Stripe
 const _urlParams=new URLSearchParams(window.location.search);
