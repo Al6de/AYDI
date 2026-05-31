@@ -1429,8 +1429,8 @@ function showOnboarding(mode){
 }
 
 async function logout(){
-  try{await _supa.auth.signOut();}catch(e){console.warn('[logout]',e);}
-  window.location.reload();
+  await _supa.auth.signOut();
+  showOnboarding('login');
 }
 
 obForm.addEventListener('submit',async e=>{
