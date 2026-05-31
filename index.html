@@ -1241,7 +1241,7 @@ async function goToStripe(){
     alert('Erreur : '+e.message);
   }
 }
-document.getElementById('subscribeBtn').addEventListener('click',function(){goToStripe();});
+bindBtn('subscribeBtn',function(){goToStripe();});
 bindBtn('payLater',closeAll);
 
 function updateQuotaUI(){
