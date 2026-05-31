@@ -1208,7 +1208,21 @@ function openPaywall(reason){
   else r.innerHTML='Classeurs et idées <b>illimités</b>, pour capturer sans aucune limite.';
   payModal.classList.add('show');
 }
-document.getElementById('subscribeBtn').onclick=()=>{premium=true;store.set('flow_premium','1');closeAll();updateQuotaUI();toast('✨ Abonnement activé — illimité');};
+document.getElementById('subscribeBtn').onclick=async()=>{
+  const btn=document.getElementById('subscribeBtn');
+  btn.disabled=true;btn.textContent='Redirection vers Stripe…';
+  try{
+    const {data:{session}}=await _supa.auth.getSession();
+    const email=session?.user?.email||'';
+    const r=await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    if(!r.ok)throw new Error('http '+r.status);
+    const {url}=await r.json();
+    window.location.href=url;
+  }catch(e){
+    btn.disabled=false;btn.textContent='Passer en illimité';
+    toast('Erreur Stripe : '+e.message);
+  }
+};
 document.getElementById('payLater').onclick=closeAll;
 
 function updateQuotaUI(){
@@ -1422,6 +1436,17 @@ _supa.auth.onAuthStateChange((event,session)=>{
 // Si un token est dans l'URL, onAuthStateChange va gérer la session —
 // ne pas afficher l'onboarding depuis ici pour éviter le flash
 _supa.auth.getSession().then(({data:{session}})=>{if(!session&&!_hasToken)showOnboarding('signup');});
+
+// Retour depuis Stripe
+const _urlParams=new URLSearchParams(window.location.search);
+if(_urlParams.get('subscribed')==='true'){
+  premium=true;store.set('flow_premium','1');
+  window.history.replaceState({},document.title,window.location.pathname);
+  setTimeout(()=>toast('✨ Abonnement activé — bienvenue en illimité !'),800);
+}
+if(_urlParams.get('cancelled')==='true'){
+  window.history.replaceState({},document.title,window.location.pathname);
+}
 
 renderFilters();renderIdeas();updateQuotaUI();
 </script>
