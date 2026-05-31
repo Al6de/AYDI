@@ -262,8 +262,18 @@ async function giftPremium(userId, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   const d = await api({ action: 'gift', userId });
-  if (d.ok) { loadUsers(); loadStats(); }
-  else { btn.disabled = false; btn.textContent = '🎁 Offrir premium'; alert('Erreur : ' + d.error); }
+  if (d.ok) {
+    _search = '';
+    _page = 1;
+    const si = document.getElementById('searchInput');
+    if (si) si.value = '';
+    loadUsers();
+    loadStats();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '🎁 Offrir premium';
+    alert('Erreur : ' + d.error);
+  }
 }
 
 // Restore session if still open
