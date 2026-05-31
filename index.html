@@ -1443,6 +1443,17 @@ obForm.addEventListener('submit',async e=>{
 const _hashParams=new URLSearchParams(window.location.hash.substring(1));
 const _hasToken=!!_hashParams.get('access_token');
 
+async function supaCheckPremium(userId){
+  try{
+    const {data,error}=await _supa.from('profiles').select('is_premium').eq('id',userId).single();
+    if(!error&&data&&data.is_premium){
+      premium=true;
+      store.set('flow_premium','1');
+      updateQuotaUI();
+    }
+  }catch(e){}
+}
+
 _supa.auth.onAuthStateChange(async(event,session)=>{
   // Nettoyer l'URL ici, après que le SDK a lu le hash
   if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
@@ -1455,6 +1466,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
     await supaLoadIdeas(session.user.id);
+    await supaCheckPremium(session.user.id);
     renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
     USER_NAME='';applyGreeting();
