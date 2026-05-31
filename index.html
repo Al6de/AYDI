@@ -1178,7 +1178,6 @@ const folderModalTitle=document.getElementById('folderModalTitle'),folderModalDe
 function renderParentPick(excludeId){
   const pp=document.getElementById('parentPick');pp.style.display='block';
   let html='<span class="dl">Ranger dans</span><div class="chips">';
-  html+='<button class="chip'+(pendingParent==null?' sel':'')+'" data-pid="">🏠 Racine</button>';
   flatFolders().forEach(({f,d})=>{
     if(excludeId&&(f.id===excludeId||isAncestor(excludeId,f.id)))return;
     html+='<button class="chip'+(pendingParent===f.id?' sel':'')+'" data-pid="'+f.id+'">'+(d?'<span style="opacity:.5">↳</span> ':'')+f.icon+' '+esc(f.name)+'</button>';
