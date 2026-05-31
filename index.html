@@ -1429,7 +1429,7 @@ function showOnboarding(mode){
 }
 
 async function logout(){
-  await _supa.auth.signOut();
+  try{await _supa.auth.signOut();}catch(e){console.warn('[logout]',e);}
   window.location.reload();
 }
 
