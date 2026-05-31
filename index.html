@@ -728,7 +728,51 @@ function ideasLeft(){ensureQuotaDay();return Math.max(0,FREE_IDEAS-quota.count);
 function canAddFolder(){return premium||folders.length<FREE_FOLDERS;}
 
 function saveFolders(){store.set(FOLDER_KEY,JSON.stringify(folders))}
-function saveIdeas(){store.set(IDEA_KEY,JSON.stringify(ideas))}
+let _supaT=null;
+function saveIdeas(){
+  store.set(IDEA_KEY,JSON.stringify(ideas));
+  clearTimeout(_supaT);
+  _supaT=setTimeout(_supaUpsertIdeas,1000);
+}
+async function _supaUpsertIdeas(){
+  try{
+    const {data:{session}}=await _supa.auth.getSession();
+    if(!session||!ideas.length)return;
+    const rows=ideas.map(i=>({...i,user_id:session.user.id}));
+    const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
+    if(error)throw error;
+  }catch(e){console.warn('[supa:save]',e);}
+}
+async function supaDeleteIdea(id){
+  try{
+    const {data:{session}}=await _supa.auth.getSession();
+    if(!session)return;
+    const {error}=await _supa.from('ideas').delete().eq('id',id).eq('user_id',session.user.id);
+    if(error)throw error;
+  }catch(e){console.warn('[supa:del]',e);}
+}
+async function supaLoadIdeas(){
+  try{
+    const {data:{session}}=await _supa.auth.getSession();
+    if(!session)return;
+    const {data,error}=await _supa.from('ideas').select('*').eq('user_id',session.user.id);
+    if(error)throw error;
+    if(data.length>0){
+      ideas=data.map(r=>({
+        id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
+        folder:r.folder||null,created:r.created,
+        subs:Array.isArray(r.subs)?r.subs:[],
+        tasks:Array.isArray(r.tasks)?r.tasks:[],
+        rating:r.rating||0,archived:!!r.archived,pin:!!r.pin,ai:!!r.ai
+      }));
+      store.set(IDEA_KEY,JSON.stringify(ideas));
+    }else{
+      // Pas d'idées dans Supabase — migrer le localStorage existant si besoin
+      const local=JSON.parse(store.get(IDEA_KEY)||'[]');
+      if(local.length>0){ideas=local;clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,300);}
+    }
+  }catch(e){console.warn('[supa:load]',e);}
+}
 function folderById(id){return folders.find(f=>f.id===id)}
 function countIn(id){return ideas.filter(i=>i.folder===id).length}
 // ----- Arbre de classeurs -----
@@ -984,7 +1028,7 @@ function archRowEl(i){
   el.innerHTML='<div class="rowB-main"><div class="rowB-t">'+esc(i.title||'Idée')+rowRate(i)+'</div><div class="rowB-x">'+esc(i.text)+'</div>'+
     '<div class="rowB-acts" style="margin-top:10px;padding-top:10px"><button class="iact" data-unarch>↩︎ Désarchiver</button><button class="iact dz" data-del>Supprimer</button></div></div>';
   el.querySelector('[data-unarch]').onclick=e=>{e.stopPropagation();i.archived=false;saveIdeas();renderIdeas();toast('Idée désarchivée');};
-  el.querySelector('[data-del]').onclick=e=>{e.stopPropagation();if(confirm('Supprimer définitivement cette idée ?')){ideas=ideas.filter(x=>x.id!==i.id);saveIdeas();renderIdeas();toast('Idée supprimée');}};
+  el.querySelector('[data-del]').onclick=e=>{e.stopPropagation();if(confirm('Supprimer définitivement cette idée ?')){supaDeleteIdea(i.id);ideas=ideas.filter(x=>x.id!==i.id);saveIdeas();renderIdeas();toast('Idée supprimée');}};
   return el;
 }
 function rowRate(i){if(!i.rating)return '';let s='';for(let k=0;k<i.rating;k++)s+='★';return ' <span class="rowB-rate" title="'+i.rating+'/5">'+s+'</span>';}
@@ -1008,7 +1052,7 @@ function rowEl(i){
   el.onclick=e=>{if(e.target.closest('[data-star],[data-edit],[data-move],[data-del],.ic-orig,.rowB-acts,.ic-edit,.dev'))return;if(openIds.has(i.id))openIds.delete(i.id);else openIds.add(i.id);renderIdeas();};
   if(open){
     el.querySelector('[data-move]').onclick=e=>{e.stopPropagation();openMove(i.id);};
-    el.querySelector('[data-del]').onclick=e=>{e.stopPropagation();if(confirm('Supprimer cette idée ?')){ideas=ideas.filter(x=>x.id!==i.id);openIds.delete(i.id);saveIdeas();renderIdeas();toast('Idée supprimée');}};
+    el.querySelector('[data-del]').onclick=e=>{e.stopPropagation();if(confirm('Supprimer cette idée ?')){supaDeleteIdea(i.id);ideas=ideas.filter(x=>x.id!==i.id);openIds.delete(i.id);saveIdeas();renderIdeas();toast('Idée supprimée');}};
     el.querySelector('[data-edit]').onclick=e=>{e.stopPropagation();editRow(el,i);};
     bindDev(el,i);
   }
@@ -1418,7 +1462,7 @@ obForm.addEventListener('submit',async e=>{
 const _hashParams=new URLSearchParams(window.location.hash.substring(1));
 const _hasToken=!!_hashParams.get('access_token');
 
-_supa.auth.onAuthStateChange((event,session)=>{
+_supa.auth.onAuthStateChange(async(event,session)=>{
   // Nettoyer l'URL ici, après que le SDK a lu le hash
   if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
   if(session&&session.user){
@@ -1429,6 +1473,8 @@ _supa.auth.onAuthStateChange((event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
+    await supaLoadIdeas();
+    renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
     USER_NAME='';applyGreeting();
     showOnboarding('login');
