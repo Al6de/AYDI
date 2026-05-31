@@ -860,7 +860,7 @@ if(SR){
   };
 }
 
-micBtn.onclick=()=>{ if(!isRec){ if(!canAddIdea()){openPaywall('idea');return;} startRec(); } else stopRec(false); };
+bindBtn(micBtn,()=>{ if(!isRec){ if(!canAddIdea()){openPaywall('idea');return;} startRec(); } else stopRec(false); });
 
 function startRec(){
   if(!SR){fallbackType();return;}
@@ -913,7 +913,7 @@ function renderChips(){
   });
 }
 
-saveBtn.onclick=()=>{
+bindBtn(saveBtn,()=>{
   const title=rvTitle.textContent.trim()||'Idée';
   const text=rvText.textContent.trim();
   if(!text)return;
@@ -925,8 +925,8 @@ saveBtn.onclick=()=>{
   review.classList.remove('show');document.getElementById('capture').classList.remove('reviewing');curRaw='';finalText='';
   renderIdeas();renderFilters();
   toast('Rangé dans '+(f?f.name:'tes idées'));
-};
-document.getElementById('discardBtn').onclick=()=>{review.classList.remove('show');document.getElementById('capture').classList.remove('reviewing');curRaw='';finalText='';};
+});
+bindBtn('discardBtn',()=>{review.classList.remove('show');document.getElementById('capture').classList.remove('reviewing');curRaw='';finalText='';});
 
 function fallbackType(hint){
   document.getElementById('capture').classList.add('typing');
@@ -1160,7 +1160,7 @@ function openMove(id){
   });
   moveModal.classList.add('show');
 }
-document.getElementById('closeMove').onclick=closeAll;
+bindBtn('closeMove',closeAll);
 
 const folderModal=document.getElementById('folderModal'),folderNameInput=document.getElementById('folderName'),iconPreview=document.getElementById('iconPreview'),iconSuggestLbl=document.getElementById('iconSuggestLbl');
 let pickedIcon='💡',manualIcon=false,aiReqToken=0,iconDebounce=null;
@@ -1217,8 +1217,8 @@ function renderParentPick(excludeId){
 function openFolderModal(parentId){if(!canAddFolder()){openPaywall('folder');return;}closeAll();editingFolderId=null;manualIcon=false;aiReqToken++;clearTimeout(iconDebounce);iconPreview.classList.remove('loading');pendingParent=parentId||null;const pf=pendingParent?folderById(pendingParent):null;folderModalTitle.textContent=pf?'Nouveau sous-classeur':'Nouveau classeur';folderModalDesc.innerHTML=pf?('Sous-classeur de <b>'+pf.icon+' '+esc(pf.name)+'</b> — range tes idées par sous-thème.'):'Nomme ton classeur — l’IA choisit l’icône. Les idées du thème s’y rangent toutes seules.';createFolderBtn.textContent='Créer';deleteFolderBtn.style.display='none';setPreview('💡',false);iconSuggestLbl.innerHTML='Tape un nom, l’IA choisit l’icône ✨';renderParentPick(null);folderModal.classList.add('show');folderNameInput.value='';setTimeout(()=>folderNameInput.focus(),200);}
 function openEditFolder(id){const f=folderById(id);if(!f)return;closeAll();editingFolderId=id;manualIcon=true;aiReqToken++;clearTimeout(iconDebounce);iconPreview.classList.remove('loading');folderModalTitle.textContent='Modifier le classeur';folderModalDesc.innerHTML='Change le nom, l’icône ou l’emplacement — ou supprime-le.';createFolderBtn.textContent='Enregistrer';deleteFolderBtn.style.display='block';setPreview(f.icon||'💡',false);iconSuggestLbl.innerHTML='Icône · ou pioche :';pendingParent=f.parent||null;renderParentPick(id);folderModal.classList.add('show');folderNameInput.value=f.name;setTimeout(()=>{folderNameInput.focus();folderNameInput.select();},200);}
 folderNameInput.oninput=()=>{const name=folderNameInput.value.trim();manualIcon=false;if(!name){aiReqToken++;clearTimeout(iconDebounce);iconPreview.classList.remove('loading');setPreview('💡',false);iconSuggestLbl.innerHTML='Tape un nom, l’IA choisit l’icône ✨';return;}setPreview(localPickIcon(name),false);clearTimeout(iconDebounce);const token=++aiReqToken;iconDebounce=setTimeout(async()=>{iconPreview.classList.add('loading');const r=await aiPickIcon(name);iconPreview.classList.remove('loading');if(token!==aiReqToken||manualIcon)return;setPreview(r.emoji,r.ai);},550);};
-document.getElementById('cancelFolder').onclick=closeAll;
-document.getElementById('createFolder').onclick=createFolder;
+bindBtn('cancelFolder',closeAll);
+bindBtn('createFolder',createFolder);
 folderNameInput.onkeydown=e=>{if(e.key==='Enter')createFolder();};
 function createFolder(){
   const name=folderNameInput.value.trim();if(!name)return;
@@ -1233,7 +1233,7 @@ function createFolder(){
     saveFolders();closeAll();renderFilters();renderIdeas();toast((np?'Sous-classeur':'Classeur')+' « '+name+' » créé');
   }
 }
-deleteFolderBtn.onclick=()=>{
+bindBtn(deleteFolderBtn,()=>{
   if(!editingFolderId)return;const f=folderById(editingFolderId);if(!f)return;
   const kids=childFolders(f.id);
   if(!confirm('Supprimer « '+f.name+' » ?'+(kids.length?' Ses '+kids.length+' sous-classeur(s) remonteront d\'un niveau.':'')+' Les '+countIn(f.id)+' idée(s) passeront dans « Sans classeur ».'))return;
@@ -1243,7 +1243,7 @@ deleteFolderBtn.onclick=()=>{
   if(curFilter===editingFolderId)curFilter='all';
   collapsed.delete(editingFolderId);saveCollapsed();
   editingFolderId=null;saveFolders();saveIdeas();closeAll();renderFilters();renderIdeas();toast('Classeur supprimé');
-};
+});
 
 // ----- Paywall / abonnement -----
 const payModal=document.getElementById('payModal');
@@ -1269,8 +1269,8 @@ async function goToStripe(btnEl){
     toast('Erreur Stripe : '+e.message);
   }
 }
-document.getElementById('subscribeBtn').onclick=function(){goToStripe(this);};
-document.getElementById('payLater').onclick=closeAll;
+bindBtn('subscribeBtn',function(){goToStripe(this);});
+bindBtn('payLater',closeAll);
 
 function updateQuotaUI(){
   const qh=document.getElementById('quotaHint');if(!qh)return;
@@ -1297,10 +1297,10 @@ function renderPlanCard(){
 }
 
 const manageModal=document.getElementById('manageModal'),manageList=document.getElementById('manageList');
-document.getElementById('gearBtn').onclick=openManage;
-document.getElementById('closeManage').onclick=closeAll;
-document.getElementById('logoutBtn').onclick=()=>logout();
-document.getElementById('addFromManage').onclick=()=>openFolderModal();
+bindBtn('gearBtn',openManage);
+bindBtn('closeManage',closeAll);
+bindBtn('logoutBtn',()=>logout());
+bindBtn('addFromManage',()=>openFolderModal());
 function openManage(){
   renderPlanCard();
   manageList.innerHTML='';
@@ -1329,20 +1329,29 @@ function showScreen(name){
   if(name==='ideas'){renderFilters();renderIdeas();}
   updateQuotaUI();
 }
-document.querySelectorAll('.nav button[data-screen]').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
+document.querySelectorAll('.nav button[data-screen]').forEach(b=>bindBtn(b,()=>showScreen(b.dataset.screen)));
 const addModal=document.getElementById('addModal');
-document.getElementById('navAdd').onclick=()=>{closeAll();addModal.classList.add('show');};
-document.getElementById('addFolderOpt').onclick=()=>openFolderModal();
-document.getElementById('addIdea').onclick=()=>{
+bindBtn('navAdd',()=>{closeAll();addModal.classList.add('show');});
+bindBtn('addFolderOpt',()=>openFolderModal());
+bindBtn('addIdea',()=>{
   if(!canAddIdea()){openPaywall('idea');return;}
   closeAll();
   review.classList.remove('show');
   document.getElementById('capture').classList.remove('reviewing','recording');
   showScreen('capture');
   setTimeout(()=>fallbackType("✍️ Écris ton idée — <b>Entrée</b> pour la mettre au propre"),80);
-};
+});
 function closeAll(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show'));}
 document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)closeAll();});
+
+// Helper PWA : couvre touch iOS et click desktop. e.preventDefault() sur touchend
+// empêche le click fantôme qui suivrait, évitant le double-déclenchement.
+function bindBtn(id,fn){
+  const el=typeof id==='string'?document.getElementById(id):id;
+  if(!el)return;
+  el.addEventListener('touchend',function(e){e.preventDefault();fn.call(this,e);},{passive:false});
+  el.addEventListener('click',function(e){e.preventDefault();fn.call(this,e);});
+}
 
 function toast(){}
 
@@ -1399,10 +1408,10 @@ function commit(card,i,kind){
   setTimeout(()=>{swIdx++;renderSwipe();toast(kind==='fav'?'★ Ajoutée aux favoris':'🗄️ Idée archivée');},290);
 }
 function swCurrentCard(){return swipeStage.querySelector('.swipe-card:not(.behind)');}
-document.getElementById('swArch').onclick=()=>{const c=swCurrentCard(),i=swDeck[swIdx];if(c&&i){c.style.transition='transform .32s ease,opacity .3s ease';commit(c,i,'arch');}};
-document.getElementById('swFav').onclick=()=>{const c=swCurrentCard(),i=swDeck[swIdx];if(c&&i){c.style.transition='transform .32s ease,opacity .3s ease';commit(c,i,'fav');}};
-document.getElementById('swSkip').onclick=()=>{swIdx++;renderSwipe();};
-document.getElementById('swipeClose').onclick=closeSwipe;
+bindBtn('swArch',()=>{const c=swCurrentCard(),i=swDeck[swIdx];if(c&&i){c.style.transition='transform .32s ease,opacity .3s ease';commit(c,i,'arch');}});
+bindBtn('swFav',()=>{const c=swCurrentCard(),i=swDeck[swIdx];if(c&&i){c.style.transition='transform .32s ease,opacity .3s ease';commit(c,i,'fav');}});
+bindBtn('swSkip',()=>{swIdx++;renderSwipe();});
+bindBtn('swipeClose',closeSwipe);
 swipeDeck.onclick=e=>{if(e.target===swipeDeck)closeSwipe();};
 (function(){const hp=document.querySelector('.head-pill');if(hp){hp.style.cursor='pointer';hp.title='Passer mes idées en revue';hp.onclick=openSwipe;}})();
 
@@ -1420,7 +1429,7 @@ function setObMode(mode){
   obToggle.textContent=isLogin?"Pas encore de compte ? S'inscrire":"J'ai déjà un compte";
   obErr.classList.remove('show');obErr.style.color='';
 }
-obToggle.onclick=()=>setObMode(obMode==='signup'?'login':'signup');
+bindBtn(obToggle,()=>setObMode(obMode==='signup'?'login':'signup'));
 
 function showOnboarding(mode){
   onboard.classList.add('show');
