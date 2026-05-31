@@ -4,14 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aydi — Admin</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0b13;color:#e2e8f0;min-height:100vh;}
 
-    #loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;}
-    .spinner{width:32px;height:32px;border:3px solid #1e1e2e;border-top:3px solid #f59e0b;border-radius:50%;animation:spin .8s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg);}}
+    #gate{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+    .gate-card{background:#111120;border:1px solid #1e1e30;border-radius:16px;padding:36px 32px;width:100%;max-width:360px;text-align:center;}
+    .gate-logo{font-size:20px;font-weight:800;color:#f8fafc;margin-bottom:6px;}
+    .gate-logo span{color:#f59e0b;}
+    .gate-sub{font-size:13px;color:#475569;margin-bottom:28px;}
+    .gate-input{width:100%;background:#0b0b13;border:1px solid #1e1e30;border-radius:10px;color:#f8fafc;padding:11px 14px;font-size:14px;outline:none;transition:border .2s;text-align:center;letter-spacing:.08em;}
+    .gate-input:focus{border-color:#f59e0b;}
+    .gate-input::placeholder{color:#334155;letter-spacing:0;}
+    .gate-btn{width:100%;margin-top:12px;background:#f59e0b;color:#0b0b13;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;}
+    .gate-btn:hover{opacity:.88;}
+    .gate-btn:disabled{opacity:.4;cursor:default;}
+    .gate-error{font-size:12px;color:#ef4444;margin-top:10px;min-height:18px;}
 
     #app{display:none;max-width:1160px;margin:0 auto;padding:28px 20px 60px;}
 
@@ -20,8 +28,8 @@
     .logo{font-size:18px;font-weight:800;letter-spacing:-.5px;color:#f8fafc;}
     .logo span{color:#f59e0b;}
     .admin-badge{background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;}
-    .logout-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s;}
-    .logout-btn:hover{border-color:#ef4444;color:#ef4444;}
+    .lock-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s;}
+    .lock-btn:hover{border-color:#ef4444;color:#ef4444;}
 
     .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px;}
     @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr);}}
@@ -49,7 +57,6 @@
     tbody td{padding:12px 16px;font-size:13px;color:#94a3b8;vertical-align:middle;}
     .td-email{color:#f1f5f9;font-weight:500;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .td-date{color:#475569;font-size:12px;}
-    .td-ideas{font-weight:600;color:#94a3b8;}
 
     .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
     .badge-free{background:#1e293b;color:#64748b;border:1px solid #2a3a4a;}
@@ -71,9 +78,15 @@
 </head>
 <body>
 
-<div id="loading">
-  <div class="spinner"></div>
-  <span style="color:#475569;font-size:13px;margin-top:4px;">Vérification…</span>
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">Aydi <span>·</span></div>
+    <div class="gate-sub">Accès administrateur</div>
+    <input class="gate-input" id="pwdInput" type="password" placeholder="Mot de passe"
+      autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPwd()">
+    <button class="gate-btn" id="pwdBtn" onclick="submitPwd()">Connexion</button>
+    <div class="gate-error" id="pwdError"></div>
+  </div>
 </div>
 
 <div id="app">
@@ -82,26 +95,14 @@
       <div class="logo">Aydi <span>·</span></div>
       <span class="admin-badge">Admin</span>
     </div>
-    <button class="logout-btn" onclick="logout()">Déconnexion</button>
+    <button class="lock-btn" onclick="lockDashboard()">Verrouiller</button>
   </div>
 
   <div class="stats">
-    <div class="stat-card">
-      <div class="stat-label">Utilisateurs</div>
-      <div class="stat-val" id="statUsers">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Premium</div>
-      <div class="stat-val amber" id="statPremium">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Idées capturées</div>
-      <div class="stat-val" id="statIdeas">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Nouveaux aujourd'hui</div>
-      <div class="stat-val green" id="statToday">—</div>
-    </div>
+    <div class="stat-card"><div class="stat-label">Utilisateurs</div><div class="stat-val" id="statUsers">—</div></div>
+    <div class="stat-card"><div class="stat-label">Premium</div><div class="stat-val amber" id="statPremium">—</div></div>
+    <div class="stat-card"><div class="stat-label">Idées capturées</div><div class="stat-val" id="statIdeas">—</div></div>
+    <div class="stat-card"><div class="stat-label">Nouveaux aujourd'hui</div><div class="stat-val green" id="statToday">—</div></div>
   </div>
 
   <div class="section">
@@ -114,13 +115,7 @@
     </div>
     <table>
       <thead>
-        <tr>
-          <th>Email</th>
-          <th>Inscription</th>
-          <th>Statut</th>
-          <th>Idées</th>
-          <th></th>
-        </tr>
+        <tr><th>Email</th><th>Inscription</th><th>Statut</th><th>Idées</th><th></th></tr>
       </thead>
       <tbody id="userTable">
         <tr class="state-row"><td colspan="5">Chargement…</td></tr>
@@ -131,40 +126,64 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://unconepyykjytwqsxkov.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_WNi1YAGp_Vv0CiNaHKDHHA_niHm2549';
-const ADMIN_EMAIL = 'amartynonin@gmail.com';
-
-const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let _token = null;
+let _pwd = null;
 let _page = 1;
 let _search = '';
 let _searchTimer = null;
 let _total = 0;
 const PAGE_SIZE = 50;
 
-async function init() {
-  const result = await Promise.race([
-    _supa.auth.getSession(),
-    new Promise(r => setTimeout(() => r({ data: { session: null } }), 6000))
-  ]);
-  const session = result?.data?.session;
-  if (!session || session.user.email !== ADMIN_EMAIL) {
-    window.location.href = '/';
-    return;
+async function submitPwd() {
+  const input = document.getElementById('pwdInput');
+  const btn = document.getElementById('pwdBtn');
+  const err = document.getElementById('pwdError');
+  const pwd = input.value.trim();
+  if (!pwd) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/admin-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      _pwd = pwd;
+      sessionStorage.setItem('adm', pwd);
+      showDashboard();
+    } else {
+      err.textContent = 'Mot de passe incorrect.';
+      input.value = '';
+      input.focus();
+    }
+  } catch(e) {
+    err.textContent = 'Erreur réseau.';
   }
-  _token = session.access_token;
-  document.getElementById('loading').style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = 'Connexion';
+}
+
+function showDashboard() {
+  document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   loadStats();
   loadUsers();
 }
 
+function lockDashboard() {
+  sessionStorage.removeItem('adm');
+  _pwd = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('gate').style.display = 'flex';
+  document.getElementById('pwdInput').value = '';
+}
+
 async function api(body) {
   const r = await fetch('/api/admin-users', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _pwd },
     body: JSON.stringify(body)
   });
   return r.json();
@@ -196,11 +215,11 @@ async function loadUsers() {
   }
   tbody.innerHTML = d.users.map(u => `
     <tr>
-      <td><div class="td-email" title="${esc(u.email)}">${esc(u.email || '—')}</div></td>
+      <td><div class="td-email" title="${esc(u.email)}">${esc(u.email||'—')}</div></td>
       <td><div class="td-date">${fmtDate(u.created_at)}</div></td>
       <td>${badge(u)}</td>
-      <td><span class="td-ideas">${u.idea_count}</span></td>
-      <td>${u.is_premium ? '' : `<button class="gift-btn" onclick="giftPremium('${u.id}',this)">🎁 Offrir premium</button>`}</td>
+      <td>${u.idea_count}</td>
+      <td>${u.is_premium?'':`<button class="gift-btn" onclick="giftPremium('${u.id}',this)">🎁 Offrir premium</button>`}</td>
     </tr>
   `).join('');
   renderPagination();
@@ -214,7 +233,7 @@ function badge(u) {
 
 function fmtDate(s) {
   if (!s) return '—';
-  return new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(s).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
 }
 
 function esc(s) {
@@ -243,22 +262,13 @@ async function giftPremium(userId, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   const d = await api({ action: 'gift', userId });
-  if (d.ok) {
-    loadUsers();
-    loadStats();
-  } else {
-    btn.disabled = false;
-    btn.textContent = '🎁 Offrir premium';
-    alert('Erreur : ' + d.error);
-  }
+  if (d.ok) { loadUsers(); loadStats(); }
+  else { btn.disabled = false; btn.textContent = '🎁 Offrir premium'; alert('Erreur : ' + d.error); }
 }
 
-async function logout() {
-  await _supa.auth.signOut();
-  window.location.href = '/';
-}
-
-init();
+// Restore session if still open
+const saved = sessionStorage.getItem('adm');
+if (saved) { _pwd = saved; showDashboard(); }
 </script>
 </body>
 </html>

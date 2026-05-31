@@ -1,6 +1,8 @@
 {
   "routes": [
-    { "src": "/admin", "dest": "/admin-dashboard.html" },
+    { "src": "/admin-dashboard", "dest": "/admin-dashboard.html" },
+    { "src": "/admin-dashboard.html", "dest": "/admin-dashboard.html" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

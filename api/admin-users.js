@@ -1,5 +1,4 @@
 const SUPABASE_URL = 'https://unconepyykjytwqsxkov.supabase.co';
-const ADMIN_EMAIL = 'amartynonin@gmail.com';
 
 function supa(path, opts = {}) {
   const key = process.env.SUPABASE_SERVICE_KEY;
@@ -16,14 +15,11 @@ function supa(path, opts = {}) {
 
 async function verifyAdmin(token) {
   if (!token) return false;
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
-    headers: { 'Authorization': 'Bearer ' + token, 'apikey': key }
-  });
-  if (!r.ok) return false;
-  const user = await r.json();
-  return user.email === ADMIN_EMAIL;
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) return false;
+  return token === expected;
 }
+
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
