@@ -1397,13 +1397,14 @@ obForm.addEventListener('submit',async e=>{
   }
 });
 
-// Détecter le callback de confirmation email (token dans le hash d'URL)
+// Lire le token AVANT tout — ne pas effacer le hash maintenant,
+// le SDK Supabase le lit de façon asynchrone
 const _hashParams=new URLSearchParams(window.location.hash.substring(1));
-if(_hashParams.get('access_token')){
-  window.history.replaceState({},document.title,window.location.pathname);
-}
+const _hasToken=!!_hashParams.get('access_token');
 
 _supa.auth.onAuthStateChange((event,session)=>{
+  // Nettoyer l'URL ici, après que le SDK a lu le hash
+  if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
   if(session&&session.user){
     const meta=session.user.user_metadata||{};
     USER_NAME=(meta.first_name||meta.name||session.user.email.split('@')[0]||'').trim();
@@ -1418,7 +1419,9 @@ _supa.auth.onAuthStateChange((event,session)=>{
   }
 });
 
-_supa.auth.getSession().then(({data:{session}})=>{if(!session)showOnboarding('signup');});
+// Si un token est dans l'URL, onAuthStateChange va gérer la session —
+// ne pas afficher l'onboarding depuis ici pour éviter le flash
+_supa.auth.getSession().then(({data:{session}})=>{if(!session&&!_hasToken)showOnboarding('signup');});
 
 renderFilters();renderIdeas();updateQuotaUI();
 </script>
