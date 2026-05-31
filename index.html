@@ -1397,6 +1397,12 @@ obForm.addEventListener('submit',async e=>{
   }
 });
 
+// Détecter le callback de confirmation email (token dans le hash d'URL)
+const _hashParams=new URLSearchParams(window.location.hash.substring(1));
+if(_hashParams.get('access_token')){
+  window.history.replaceState({},document.title,window.location.pathname);
+}
+
 _supa.auth.onAuthStateChange((event,session)=>{
   if(session&&session.user){
     const meta=session.user.user_metadata||{};
