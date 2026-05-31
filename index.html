@@ -1230,14 +1230,15 @@ async function goToStripe(btnEl){
   if(btnEl){btnEl.disabled=true;btnEl.textContent='Redirection vers Stripe…';}
   try{
     const {data:{session}}=await _supa.auth.getSession();
-    const email=session?.user?.email||'';
+    if(!session){if(btnEl){btnEl.disabled=false;btnEl.textContent='Passer en illimité';}showOnboarding('login');return;}
+    const email=session.user.email;
     const r=await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
     if(!r.ok)throw new Error('http '+r.status);
     const {url}=await r.json();
     window.location.href=url;
   }catch(e){
     if(btnEl){btnEl.disabled=false;btnEl.textContent='Passer en illimité';}
-    toast('Erreur Stripe : '+e.message);
+    console.error('[goToStripe]',e);
   }
 }
 bindBtn('subscribeBtn',function(){goToStripe(this);});
