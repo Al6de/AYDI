@@ -1429,12 +1429,8 @@ function showOnboarding(mode){
 }
 
 async function logout(){
-  if(!confirm('Se déconnecter ?'))return;
-  closeAll();
-  ideas=[];store.set(IDEA_KEY,'[]');
   await _supa.auth.signOut();
-  USER_NAME='';applyGreeting();
-  showOnboarding('login');
+  window.location.reload();
 }
 
 obForm.addEventListener('submit',async e=>{
