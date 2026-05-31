@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aydi — Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b0b13;color:#e2e8f0;min-height:100vh;}
+
+    #loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;}
+    .spinner{width:32px;height:32px;border:3px solid #1e1e2e;border-top:3px solid #f59e0b;border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    #app{display:none;max-width:1160px;margin:0 auto;padding:28px 20px 60px;}
+
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid #1a1a28;}
+    .header-left{display:flex;align-items:center;gap:10px;}
+    .logo{font-size:18px;font-weight:800;letter-spacing:-.5px;color:#f8fafc;}
+    .logo span{color:#f59e0b;}
+    .admin-badge{background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;}
+    .logout-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s;}
+    .logout-btn:hover{border-color:#ef4444;color:#ef4444;}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px;}
+    @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr);}}
+    .stat-card{background:#111120;border:1px solid #1e1e30;border-radius:12px;padding:18px 20px;}
+    .stat-label{font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+    .stat-val{font-size:30px;font-weight:700;color:#f8fafc;line-height:1;}
+    .stat-val.amber{color:#f59e0b;}
+    .stat-val.green{color:#4ade80;}
+
+    .section{background:#111120;border:1px solid #1e1e30;border-radius:12px;overflow:hidden;}
+    .section-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1a1a28;}
+    .section-title{font-size:14px;font-weight:600;color:#f8fafc;}
+    .user-count{font-size:13px;color:#475569;}
+
+    .search-wrap{padding:14px 20px;border-bottom:1px solid #1a1a28;}
+    .search-input{width:100%;background:#0b0b13;border:1px solid #1e1e30;border-radius:8px;color:#f8fafc;padding:9px 14px;font-size:13px;outline:none;transition:border .2s;}
+    .search-input:focus{border-color:#f59e0b;}
+    .search-input::placeholder{color:#334155;}
+
+    table{width:100%;border-collapse:collapse;}
+    thead th{padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1a1a28;}
+    tbody tr{border-bottom:1px solid #161625;transition:background .15s;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:#13132a;}
+    tbody td{padding:12px 16px;font-size:13px;color:#94a3b8;vertical-align:middle;}
+    .td-email{color:#f1f5f9;font-weight:500;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .td-date{color:#475569;font-size:12px;}
+    .td-ideas{font-weight:600;color:#94a3b8;}
+
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+    .badge-free{background:#1e293b;color:#64748b;border:1px solid #2a3a4a;}
+    .badge-premium{background:#78350f1a;color:#fbbf24;border:1px solid #78350f55;}
+    .badge-gifted{background:#14532d1a;color:#4ade80;border:1px solid #14532d55;}
+
+    .gift-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s;white-space:nowrap;}
+    .gift-btn:hover{border-color:#4ade80;color:#4ade80;}
+    .gift-btn:disabled{opacity:.35;cursor:default;}
+
+    .pagination{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;}
+    .page-btn{background:#111120;border:1px solid #1e1e30;color:#64748b;width:32px;height:32px;border-radius:7px;cursor:pointer;font-size:14px;transition:all .2s;}
+    .page-btn:hover:not(:disabled){border-color:#f59e0b;color:#f59e0b;}
+    .page-btn:disabled{opacity:.3;cursor:default;}
+    .page-info{font-size:13px;color:#475569;min-width:90px;text-align:center;}
+
+    .state-row td{text-align:center;padding:40px;color:#334155;font-size:14px;}
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span style="color:#475569;font-size:13px;margin-top:4px;">Vérification…</span>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">Aydi <span>·</span></div>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Utilisateurs</div>
+      <div class="stat-val" id="statUsers">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Premium</div>
+      <div class="stat-val amber" id="statPremium">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Idées capturées</div>
+      <div class="stat-val" id="statIdeas">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Nouveaux aujourd'hui</div>
+      <div class="stat-val green" id="statToday">—</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-title">Utilisateurs</span>
+      <span class="user-count" id="userCount"></span>
+    </div>
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="Rechercher par email…" oninput="onSearch(this.value)">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Inscription</th>
+          <th>Statut</th>
+          <th>Idées</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="userTable">
+        <tr class="state-row"><td colspan="5">Chargement…</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://unconepyykjytwqsxkov.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_WNi1YAGp_Vv0CiNaHKDHHA_niHm2549';
+const ADMIN_EMAIL = 'amartynonin@gmail.com';
+
+const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let _token = null;
+let _page = 1;
+let _search = '';
+let _searchTimer = null;
+let _total = 0;
+const PAGE_SIZE = 50;
+
+async function init() {
+  const result = await Promise.race([
+    _supa.auth.getSession(),
+    new Promise(r => setTimeout(() => r({ data: { session: null } }), 6000))
+  ]);
+  const session = result?.data?.session;
+  if (!session || session.user.email !== ADMIN_EMAIL) {
+    window.location.href = '/';
+    return;
+  }
+  _token = session.access_token;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadStats();
+  loadUsers();
+}
+
+async function api(body) {
+  const r = await fetch('/api/admin-users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+async function loadStats() {
+  const d = await api({ action: 'stats' });
+  if (d.error) return;
+  document.getElementById('statUsers').textContent = d.totalUsers;
+  document.getElementById('statPremium').textContent = d.premiumUsers;
+  document.getElementById('statIdeas').textContent = d.totalIdeas;
+  document.getElementById('statToday').textContent = d.newToday;
+}
+
+async function loadUsers() {
+  const tbody = document.getElementById('userTable');
+  tbody.innerHTML = '<tr class="state-row"><td colspan="5">Chargement…</td></tr>';
+  const d = await api({ action: 'users', page: _page, search: _search });
+  if (d.error) {
+    tbody.innerHTML = '<tr class="state-row"><td colspan="5">Erreur : ' + esc(d.error) + '</td></tr>';
+    return;
+  }
+  _total = d.total;
+  document.getElementById('userCount').textContent = _total + ' utilisateur' + (_total !== 1 ? 's' : '');
+  if (!d.users || d.users.length === 0) {
+    tbody.innerHTML = '<tr class="state-row"><td colspan="5">Aucun utilisateur trouvé</td></tr>';
+    renderPagination();
+    return;
+  }
+  tbody.innerHTML = d.users.map(u => `
+    <tr>
+      <td><div class="td-email" title="${esc(u.email)}">${esc(u.email || '—')}</div></td>
+      <td><div class="td-date">${fmtDate(u.created_at)}</div></td>
+      <td>${badge(u)}</td>
+      <td><span class="td-ideas">${u.idea_count}</span></td>
+      <td>${u.is_premium ? '' : `<button class="gift-btn" onclick="giftPremium('${u.id}',this)">🎁 Offrir premium</button>`}</td>
+    </tr>
+  `).join('');
+  renderPagination();
+}
+
+function badge(u) {
+  if (u.premium_gifted) return '<span class="badge badge-gifted">🎁 Offert</span>';
+  if (u.is_premium) return '<span class="badge badge-premium">⭐ Premium</span>';
+  return '<span class="badge badge-free">Gratuit</span>';
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  return new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderPagination() {
+  const pages = Math.ceil(_total / PAGE_SIZE);
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <button class="page-btn" onclick="goPage(${_page-1})" ${_page<=1?'disabled':''}>‹</button>
+    <span class="page-info">Page ${_page} / ${pages}</span>
+    <button class="page-btn" onclick="goPage(${_page+1})" ${_page>=pages?'disabled':''}>›</button>
+  `;
+}
+
+function goPage(p) { _page = p; loadUsers(); }
+
+function onSearch(val) {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => { _search = val.trim(); _page = 1; loadUsers(); }, 350);
+}
+
+async function giftPremium(userId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  const d = await api({ action: 'gift', userId });
+  if (d.ok) {
+    loadUsers();
+    loadStats();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '🎁 Offrir premium';
+    alert('Erreur : ' + d.error);
+  }
+}
+
+async function logout() {
+  await _supa.auth.signOut();
+  window.location.href = '/';
+}
+
+init();
+</script>
+</body>
+</html>
