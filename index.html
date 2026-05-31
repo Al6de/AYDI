@@ -1241,7 +1241,7 @@ async function goToStripe(btnEl){
     console.error('[goToStripe]',e);
   }
 }
-bindBtn('subscribeBtn',function(){goToStripe(this);});
+document.getElementById('subscribeBtn').addEventListener('click',function(){goToStripe(this);});
 bindBtn('payLater',closeAll);
 
 function updateQuotaUI(){
