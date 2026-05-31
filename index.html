@@ -433,7 +433,9 @@
   .ob-err.show{display:block}
   .ob-form .btn{margin-top:8px}
   .ob-foot{text-align:center;font-size:11.5px;color:var(--text-3);margin-top:18px;line-height:1.5}
+  .ob-toggle{background:none;border:none;color:var(--accent);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;margin-top:14px;text-decoration:underline;text-underline-offset:2px;padding:0;width:100%;text-align:center;display:block}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="phone">
@@ -665,11 +667,12 @@
       <h1 class="ob-h">Capture tes idées avant qu'elles s'éteignent.</h1>
       <p class="ob-sub">Parle, l'IA les met au propre, tu les ranges. Crée ton compte pour commencer.</p>
       <form class="ob-form" id="obForm" novalidate>
-        <div class="ob-field"><label for="obName">Prénom</label><input id="obName" type="text" placeholder="Alcide" autocomplete="given-name" maxlength="24"></div>
+        <div id="obNameField" class="ob-field"><label for="obName">Prénom</label><input id="obName" type="text" placeholder="Alcide" autocomplete="given-name" maxlength="24"></div>
         <div class="ob-field"><label for="obEmail">Email</label><input id="obEmail" type="email" placeholder="toi@exemple.com" autocomplete="email"></div>
-        <div class="ob-field"><label for="obPass">Mot de passe</label><input id="obPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+        <div class="ob-field"><label for="obPass">Mot de passe</label><input id="obPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
         <div class="ob-err" id="obErr"></div>
-        <button class="btn primary big" type="submit">Créer mon compte</button>
+        <button class="btn primary big" type="submit" id="obSubmit">Créer mon compte</button>
+        <button type="button" class="ob-toggle" id="obToggle">J'ai déjà un compte</button>
       </form>
       <div class="ob-foot">En continuant, tu acceptes les conditions d'utilisation d'Aydi.</div>
     </div>
@@ -679,6 +682,10 @@
 </div>
 
 <script>
+const _supa = window.supabase.createClient(
+  'https://unconepyykjytwqsxkov.supabase.co',
+  'sb_publishable_WNi1YAGp_Vv0CiNaHKDHHA_niHm2549'
+);
 const mem={};
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
 const IDEA_KEY='flow_ideas_v2', FOLDER_KEY='flow_folders_v2';
@@ -1339,29 +1346,73 @@ document.getElementById('swipeClose').onclick=closeSwipe;
 swipeDeck.onclick=e=>{if(e.target===swipeDeck)closeSwipe();};
 (function(){const hp=document.querySelector('.head-pill');if(hp){hp.style.cursor='pointer';hp.title='Passer mes idées en revue';hp.onclick=openSwipe;}})();
 
-// ===== Onboarding / compte =====
+// ===== Auth Supabase =====
 const onboard=document.getElementById('onboard'),obForm=document.getElementById('obForm'),obErr=document.getElementById('obErr');
-function hasAccount(){return !!store.get('flow_account');}
-function showOnboarding(){onboard.classList.add('show');setTimeout(()=>document.getElementById('obName').focus(),250);}
-function logout(){if(!confirm('Se déconnecter ? Tes idées restent sur cet appareil.'))return;store.set('flow_account','');closeAll();document.getElementById('obName').value='';document.getElementById('obEmail').value='';document.getElementById('obPass').value='';obErr.classList.remove('show');showOnboarding();}
-obForm.addEventListener('submit',e=>{
+const obSubmit=document.getElementById('obSubmit'),obToggle=document.getElementById('obToggle'),obNameField=document.getElementById('obNameField');
+let obMode='signup';
+
+function setObMode(mode){
+  obMode=mode;
+  const isLogin=mode==='login';
+  obNameField.style.display=isLogin?'none':'';
+  document.getElementById('obPass').autocomplete=isLogin?'current-password':'new-password';
+  obSubmit.textContent=isLogin?'Se connecter':'Créer mon compte';
+  obToggle.textContent=isLogin?"Pas encore de compte ? S'inscrire":"J'ai déjà un compte";
+  obErr.classList.remove('show');obErr.style.color='';
+}
+obToggle.onclick=()=>setObMode(obMode==='signup'?'login':'signup');
+
+function showOnboarding(mode){
+  onboard.classList.add('show');
+  setObMode(mode||'signup');
+  setTimeout(()=>(obMode==='signup'?document.getElementById('obName'):document.getElementById('obEmail')).focus(),250);
+}
+
+async function logout(){
+  if(!confirm('Se déconnecter ?'))return;
+  closeAll();
+  await _supa.auth.signOut();
+}
+
+obForm.addEventListener('submit',async e=>{
   e.preventDefault();
-  const name=document.getElementById('obName').value.trim();
   const email=document.getElementById('obEmail').value.trim();
   const pass=document.getElementById('obPass').value;
-  const fail=m=>{obErr.textContent=m;obErr.classList.add('show');};
-  if(name.length<2)return fail('Entre ton prénom.');
+  const fail=m=>{obErr.textContent=m;obErr.style.color='';obErr.classList.add('show');};
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return fail('Cet email ne semble pas valide.');
-  if(pass.length<4)return fail('Choisis un mot de passe d\'au moins 4 caractères.');
+  if(pass.length<4)return fail('Mot de passe trop court (4 caractères min).');
   obErr.classList.remove('show');
-  store.set('flow_account',JSON.stringify({name,email,pw:pass,created:Date.now()}));
-  store.set('flow_user_name',name);
-  USER_NAME=name;applyGreeting();updateHeadPill();
-  onboard.classList.remove('show');
-  showScreen('capture');
-  toast('Bienvenue '+name+' 👋');
+  obSubmit.disabled=true;obSubmit.textContent=obMode==='signup'?'Création…':'Connexion…';
+  if(obMode==='signup'){
+    const name=document.getElementById('obName').value.trim();
+    if(name.length<2){obSubmit.disabled=false;obSubmit.textContent='Créer mon compte';return fail('Entre ton prénom.');}
+    const {data,error}=await _supa.auth.signUp({email,password:pass,options:{data:{first_name:name}}});
+    obSubmit.disabled=false;obSubmit.textContent='Créer mon compte';
+    if(error)return fail(error.message);
+    if(data.user&&!data.session){obErr.textContent='Vérifie ta boîte mail pour confirmer ton compte ✉️';obErr.style.color='var(--accent)';obErr.classList.add('show');}
+  }else{
+    const {error}=await _supa.auth.signInWithPassword({email,password:pass});
+    obSubmit.disabled=false;obSubmit.textContent='Se connecter';
+    if(error)return fail(error.message==='Invalid login credentials'?'Email ou mot de passe incorrect.':error.message);
+  }
 });
-if(!hasAccount())showOnboarding();
+
+_supa.auth.onAuthStateChange((event,session)=>{
+  if(session&&session.user){
+    const meta=session.user.user_metadata||{};
+    USER_NAME=(meta.first_name||meta.name||session.user.email.split('@')[0]||'').trim();
+    store.set('flow_user_name',USER_NAME);
+    applyGreeting();updateHeadPill();
+    onboard.classList.remove('show');
+    showScreen('capture');
+    if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
+  }else if(event==='SIGNED_OUT'){
+    USER_NAME='';applyGreeting();
+    showOnboarding('login');
+  }
+});
+
+_supa.auth.getSession().then(({data:{session}})=>{if(!session)showOnboarding('signup');});
 
 renderFilters();renderIdeas();updateQuotaUI();
 </script>
