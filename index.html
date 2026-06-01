@@ -1458,9 +1458,10 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     try{
       const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id})});
       const _pd=await _pr.json();
+      alert('DEBUG premium: '+JSON.stringify(_pd));
       if(_pd.premium){premium=true;store.set('flow_premium','1');}
       else{premium=false;store.set('flow_premium','0');}
-    }catch(e){}
+    }catch(e){alert('DEBUG premium error: '+e.message);}
     updateQuotaUI();
     await supaLoadIdeas(session.user.id);
     renderIdeas();updateHeadPill();
