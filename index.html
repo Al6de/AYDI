@@ -1463,11 +1463,11 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
-    // Vérification premium depuis la table profiles
+    // Vérification premium (liste hardcodée + profiles table)
     try{
-      const {data:profile}=await _supa.from('profiles').select('is_premium').eq('id',session.user.id).single();
-      const isPremium=profile?.is_premium===true;
-      if(isPremium){premium=true;store.set('flow_premium','1');}
+      const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id,email:session.user.email})});
+      const _pd=await _pr.json();
+      if(_pd.premium){premium=true;store.set('flow_premium','1');}
       else{premium=false;store.set('flow_premium','0');}
     }catch(e){}
     updateQuotaUI();
