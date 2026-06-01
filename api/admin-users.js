@@ -115,9 +115,10 @@ module.exports = async function handler(req, res) {
 
     if (action === 'gift') {
       if (!userId) return res.status(400).json({ error: 'userId manquant' });
-      const r = await supa(`/auth/v1/admin/users/${userId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ user_metadata: { is_premium: true } })
+      const r = await supa('/rest/v1/profiles', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: userId, is_premium: true, premium_gifted: true })
       });
       if (!r.ok) { const err = await r.text(); return res.status(500).json({ error: err }); }
       return res.status(200).json({ ok: true });
@@ -125,9 +126,10 @@ module.exports = async function handler(req, res) {
 
     if (action === 'revoke') {
       if (!userId) return res.status(400).json({ error: 'userId manquant' });
-      const r = await supa(`/auth/v1/admin/users/${userId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ user_metadata: { is_premium: false } })
+      const r = await supa('/rest/v1/profiles', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: userId, is_premium: false, premium_gifted: false })
       });
       if (!r.ok) { const err = await r.text(); return res.status(500).json({ error: err }); }
       return res.status(200).json({ ok: true });

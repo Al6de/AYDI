@@ -1463,14 +1463,13 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
-    // Vérification premium via API serveur (toujours à jour)
+    // Vérification premium depuis la table profiles
     try{
-      const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id})});
-      const _pd=await _pr.json();
-      alert('DEBUG premium: '+JSON.stringify(_pd));
-      if(_pd.premium){premium=true;store.set('flow_premium','1');}
+      const {data:profile}=await _supa.from('profiles').select('is_premium').eq('id',session.user.id).single();
+      const isPremium=profile?.is_premium===true;
+      if(isPremium){premium=true;store.set('flow_premium','1');}
       else{premium=false;store.set('flow_premium','0');}
-    }catch(e){alert('DEBUG premium error: '+e.message);}
+    }catch(e){}
     updateQuotaUI();
     await supaLoadIdeas(session.user.id);
     renderIdeas();updateHeadPill();

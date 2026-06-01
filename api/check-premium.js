@@ -11,27 +11,18 @@ module.exports = async function handler(req, res) {
   if (!userId) return res.status(200).json({ premium: false });
 
   const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!key) return res.status(200).json({ premium: false, error: 'no_key' });
+  if (!key) return res.status(200).json({ premium: false });
 
   try {
-    // Read user metadata directly via admin API (always current, bypasses JWT cache)
-    const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
-      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
-    });
-    if (!r.ok) {
-      const err = await r.text();
-      return res.status(200).json({ premium: false, error: err });
-    }
-    const user = await r.json();
-    const isPremium = user?.user_metadata?.is_premium === true;
-    // debug: return raw metadata so we can see the actual field names
-    return res.status(200).json({
-      premium: isPremium,
-      debug_meta: user?.user_metadata,
-      debug_raw: user?.raw_user_meta_data,
-      debug_app: user?.app_metadata
-    });
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=is_premium`,
+      { headers: { 'apikey': key, 'Authorization': 'Bearer ' + key } }
+    );
+    if (!r.ok) return res.status(200).json({ premium: false });
+    const data = await r.json();
+    const isPremium = Array.isArray(data) && data.length > 0 && data[0].is_premium === true;
+    return res.status(200).json({ premium: isPremium });
   } catch(e) {
-    return res.status(200).json({ premium: false, error: String(e) });
+    return res.status(200).json({ premium: false });
   }
 };
