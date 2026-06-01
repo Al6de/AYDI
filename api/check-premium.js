@@ -24,7 +24,13 @@ module.exports = async function handler(req, res) {
     }
     const user = await r.json();
     const isPremium = user?.user_metadata?.is_premium === true;
-    return res.status(200).json({ premium: isPremium });
+    // debug: return raw metadata so we can see the actual field names
+    return res.status(200).json({
+      premium: isPremium,
+      debug_meta: user?.user_metadata,
+      debug_raw: user?.raw_user_meta_data,
+      debug_app: user?.app_metadata
+    });
   } catch(e) {
     return res.status(200).json({ premium: false, error: String(e) });
   }
