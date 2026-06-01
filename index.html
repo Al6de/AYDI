@@ -1443,14 +1443,6 @@ obForm.addEventListener('submit',async e=>{
 const _hashParams=new URLSearchParams(window.location.hash.substring(1));
 const _hasToken=!!_hashParams.get('access_token');
 
-function applyPremiumFromSession(user){
-  if(user?.user_metadata?.is_premium){
-    premium=true;
-    store.set('flow_premium','1');
-    updateQuotaUI();
-  }
-}
-
 _supa.auth.onAuthStateChange(async(event,session)=>{
   // Nettoyer l'URL ici, après que le SDK a lu le hash
   if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
@@ -1462,7 +1454,17 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
-    applyPremiumFromSession(session.user);
+    // Vérification premium : user_metadata (gifté via admin) OU table profiles
+    if(meta.is_premium){
+      premium=true;store.set('flow_premium','1');
+    } else {
+      try{
+        const {data:profile}=await _supa.from('profiles').select('is_premium').eq('id',session.user.id).single();
+        const isPremium=profile?.is_premium===true;
+        if(isPremium){premium=true;store.set('flow_premium','1');}
+      }catch(e){}
+    }
+    updateQuotaUI();
     await supaLoadIdeas(session.user.id);
     renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
