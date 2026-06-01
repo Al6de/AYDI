@@ -1459,6 +1459,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
       const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id})});
       const _pd=await _pr.json();
       if(_pd.premium){premium=true;store.set('flow_premium','1');}
+      else{premium=false;store.set('flow_premium','0');}
     }catch(e){}
     updateQuotaUI();
     await supaLoadIdeas(session.user.id);

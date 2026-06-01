@@ -287,7 +287,6 @@ async function revokePremium(userId, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   const d = await api({ action: 'revoke', userId });
-  alert('Revoke response: ' + JSON.stringify(d));
   if (d.ok) {
     _search = ''; _page = 1;
     const si = document.getElementById('searchInput');
