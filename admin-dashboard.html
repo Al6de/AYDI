@@ -66,6 +66,9 @@
     .gift-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s;white-space:nowrap;}
     .gift-btn:hover{border-color:#4ade80;color:#4ade80;}
     .gift-btn:disabled{opacity:.35;cursor:default;}
+    .revoke-btn{background:none;border:1px solid #2a2a3e;color:#64748b;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s;white-space:nowrap;}
+    .revoke-btn:hover{border-color:#ef4444;color:#ef4444;}
+    .revoke-btn:disabled{opacity:.35;cursor:default;}
 
     .pagination{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;}
     .page-btn{background:#111120;border:1px solid #1e1e30;color:#64748b;width:32px;height:32px;border-radius:7px;cursor:pointer;font-size:14px;transition:all .2s;}
@@ -219,7 +222,11 @@ async function loadUsers() {
       <td><div class="td-date">${fmtDate(u.created_at)}</div></td>
       <td>${badge(u)}</td>
       <td>${u.idea_count}</td>
-      <td>${u.is_premium?'':`<button class="gift-btn" onclick="giftPremium('${u.id}',this)">🎁 Offrir premium</button>`}</td>
+      <td>
+        ${u.is_premium
+          ? `<button class="revoke-btn" onclick="revokePremium('${u.id}',this)">✕ Révoquer</button>`
+          : `<button class="gift-btn" onclick="giftPremium('${u.id}',this)">🎁 Offrir premium</button>`}
+      </td>
     </tr>
   `).join('');
   renderPagination();
@@ -272,6 +279,23 @@ async function giftPremium(userId, btn) {
   } else {
     btn.disabled = false;
     btn.textContent = '🎁 Offrir premium';
+    alert('Erreur : ' + d.error);
+  }
+}
+
+async function revokePremium(userId, btn) {
+  if (!confirm('Révoquer le premium de cet utilisateur ?')) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  const d = await api({ action: 'revoke', userId });
+  if (d.ok) {
+    _search = ''; _page = 1;
+    const si = document.getElementById('searchInput');
+    if (si) si.value = '';
+    loadUsers(); loadStats();
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✕ Révoquer';
     alert('Erreur : ' + d.error);
   }
 }

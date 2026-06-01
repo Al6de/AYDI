@@ -115,10 +115,17 @@ module.exports = async function handler(req, res) {
         method: 'PUT',
         body: JSON.stringify({ user_metadata: { is_premium: true } })
       });
-      if (!r.ok) {
-        const err = await r.text();
-        return res.status(500).json({ error: err });
-      }
+      if (!r.ok) { const err = await r.text(); return res.status(500).json({ error: err }); }
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'revoke') {
+      if (!userId) return res.status(400).json({ error: 'userId manquant' });
+      const r = await supa(`/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ user_metadata: { is_premium: false } })
+      });
+      if (!r.ok) { const err = await r.text(); return res.status(500).json({ error: err }); }
       return res.status(200).json({ ok: true });
     }
 
