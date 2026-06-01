@@ -95,14 +95,18 @@ module.exports = async function handler(req, res) {
       const paginated = filtered.slice(offset, offset + PAGE_SIZE);
 
       return res.status(200).json({
-        users: paginated.map(u => ({
-          id: u.id,
-          email: u.email || '',
-          created_at: u.created_at,
-          is_premium: !!profMap[u.id]?.is_premium,
-          premium_gifted: !!profMap[u.id]?.premium_gifted,
-          idea_count: ideaCounts[u.id] || 0
-        })),
+        users: paginated.map(u => {
+          const metaPremium = !!u.user_metadata?.is_premium;
+          const profilePremium = !!profMap[u.id]?.is_premium;
+          return {
+            id: u.id,
+            email: u.email || '',
+            created_at: u.created_at,
+            is_premium: metaPremium || profilePremium,
+            premium_gifted: metaPremium || !!profMap[u.id]?.premium_gifted,
+            idea_count: ideaCounts[u.id] || 0
+          };
+        }),
         total,
         page,
         pageSize: PAGE_SIZE
