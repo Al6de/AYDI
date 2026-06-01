@@ -284,7 +284,6 @@ async function giftPremium(userId, btn) {
 }
 
 async function revokePremium(userId, btn) {
-  if (!confirm('Révoquer le premium de cet utilisateur ?')) return;
   btn.disabled = true;
   btn.textContent = '…';
   const d = await api({ action: 'revoke', userId });
