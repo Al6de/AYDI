@@ -737,22 +737,21 @@ async function supaLoadIdeas(userId){
     const {data,error}=await _supa.from('ideas').select('*').eq('user_id',uid);
     if(error){console.error('[supaLoadIdeas] erreur:',error);throw error;}
     console.log('[supaLoadIdeas]',data.length,'idée(s) trouvée(s) dans Supabase');
-    if(data.length>0){
-      ideas=data.map(r=>({
-        id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
-        folder:r.folder||null,created:r.created,
-        subs:Array.isArray(r.subs)?r.subs:[],
-        tasks:Array.isArray(r.tasks)?r.tasks:[],
-        rating:r.rating||0,archived:!!r.archived,pin:!!r.pin,ai:!!r.ai
-      }));
-      store.set(IDEA_KEY,JSON.stringify(ideas));
-    }else{
-      // Pas d'idées dans Supabase — migrer le localStorage existant si besoin
-      const local=JSON.parse(store.get(IDEA_KEY)||'[]');
-      if(local.length>0){
-        console.log('[supaLoadIdeas] migration de',local.length,'idée(s) locale(s) vers Supabase');
-        ideas=local;clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,300);
-      }
+    const remote=data.map(r=>({
+      id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
+      folder:r.folder||null,created:r.created,
+      subs:Array.isArray(r.subs)?r.subs:[],
+      tasks:Array.isArray(r.tasks)?r.tasks:[],
+      rating:r.rating||0,archived:!!r.archived,pin:!!r.pin,ai:!!r.ai
+    }));
+    const local=JSON.parse(store.get(IDEA_KEY)||'[]');
+    // Fusionner local + remote : garder toutes les idées des deux sources (par id)
+    const merged=Object.values([...local,...remote].reduce((acc,i)=>{acc[i.id]=i;return acc;},{}));
+    ideas=merged;
+    store.set(IDEA_KEY,JSON.stringify(ideas));
+    if(merged.length>remote.length){
+      // Il y avait des idées locales non synchronisées — les pousser vers Supabase
+      clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,500);
     }
   }catch(e){console.warn('[supa:load]',e);}
 }
