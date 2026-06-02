@@ -4,7 +4,8 @@ const SUPABASE_URL = 'https://unconepyykjytwqsxkov.supabase.co';
 // Ajouter aussi dans la variable Vercel PREMIUM_EMAILS (séparés par virgule)
 const HARDCODED_PREMIUM = [
   'althogaming@gmail.com',
-  'marty.thiery@club-internet.fr'
+  'marty.thiery@club-internet.fr',
+  'nathanloubet12@gmail.com'
 ];
 
 module.exports = async function handler(req, res) {
