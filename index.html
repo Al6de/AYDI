@@ -714,18 +714,18 @@ function saveIdeas(){
 }
 async function _supaUpsertIdeas(){
   try{
-    const {data:{session}}=await _supa.auth.getSession();
-    if(!session||!ideas.length)return;
-    const rows=ideas.map(i=>({...i,user_id:session.user.id}));
+    const uid=_currentUserId;
+    if(!uid||!ideas.length)return;
+    const rows=ideas.map(i=>({...i,user_id:uid}));
     const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
     if(error)throw error;
   }catch(e){console.warn('[supa:save]',e);}
 }
 async function supaDeleteIdea(id){
   try{
-    const {data:{session}}=await _supa.auth.getSession();
-    if(!session)return;
-    const {error}=await _supa.from('ideas').delete().eq('id',id).eq('user_id',session.user.id);
+    const uid=_currentUserId;
+    if(!uid)return;
+    const {error}=await _supa.from('ideas').delete().eq('id',id).eq('user_id',uid);
     if(error)throw error;
   }catch(e){console.warn('[supa:del]',e);}
 }
@@ -774,6 +774,7 @@ function fmtDate(ts){
   return d.getDate()+" "+MM[d.getMonth()]+" · "+h+":"+m;
 }
 let USER_NAME = (store.get('flow_user_name')||'').trim();
+let _currentUserId = null;
 function applyGreeting(){const hr=new Date().getHours();const word=hr<12?'Bonjour':hr<18?'Bon aprèm':'Bonsoir';document.getElementById('greetMain').textContent=USER_NAME?(word+' '+USER_NAME):word;document.getElementById('hello').textContent='Prêt à capturer';}
 applyGreeting();
 function computeStreak(){
@@ -1455,6 +1456,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
   // Nettoyer l'URL ici, après que le SDK a lu le hash
   if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
   if(session&&session.user){
+    _currentUserId=session.user.id;
     const meta=session.user.user_metadata||{};
     USER_NAME=(meta.first_name||meta.name||session.user.email.split('@')[0]||'').trim();
     store.set('flow_user_name',USER_NAME);
@@ -1473,6 +1475,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     await supaLoadIdeas(session.user.id);
     renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
+    _currentUserId=null;
     USER_NAME='';applyGreeting();
     showOnboarding('login');
   }
