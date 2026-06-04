@@ -705,7 +705,12 @@ function canAddIdea(){ensureQuotaDay();return premium||quota.count<FREE_IDEAS;}
 function ideasLeft(){ensureQuotaDay();return Math.max(0,FREE_IDEAS-quota.count);}
 function canAddFolder(){return premium||folders.length<FREE_FOLDERS;}
 
-function saveFolders(){store.set(FOLDER_KEY,JSON.stringify(folders))}
+let _supaFolderT=null;
+function saveFolders(){
+  store.set(FOLDER_KEY,JSON.stringify(folders));
+  clearTimeout(_supaFolderT);
+  _supaFolderT=setTimeout(_supaUpsertFolders,1000);
+}
 let _supaT=null;
 function saveIdeas(){
   store.set(IDEA_KEY,JSON.stringify(ideas));
@@ -728,6 +733,37 @@ async function supaDeleteIdea(id){
     const {error}=await _supa.from('ideas').delete().eq('id',id).eq('user_id',uid);
     if(error)throw error;
   }catch(e){console.warn('[supa:del]',e);}
+}
+async function _supaUpsertFolders(){
+  try{
+    const uid=_currentUserId;
+    if(!uid)return;
+    const rows=folders.map(f=>({id:f.id,user_id:uid,name:f.name,icon:f.icon,bank:f.bank||null,parent:f.parent||null,pin:!!f.pin}));
+    if(!rows.length)return;
+    const {error}=await _supa.from('folders').upsert(rows,{onConflict:'id'});
+    if(error)throw error;
+  }catch(e){console.warn('[supa:folders:save]',e);}
+}
+async function supaDeleteFolder(id){
+  try{
+    const uid=_currentUserId;
+    if(!uid)return;
+    await _supa.from('folders').delete().eq('id',id).eq('user_id',uid);
+  }catch(e){console.warn('[supa:folders:del]',e);}
+}
+async function supaLoadFolders(userId){
+  try{
+    const uid=userId||(await _supa.auth.getSession()).data?.session?.user?.id;
+    if(!uid)return;
+    const {data,error}=await _supa.from('folders').select('*').eq('user_id',uid);
+    if(error)throw error;
+    if(data&&data.length>0){
+      folders=data.map(f=>({id:f.id,name:f.name,icon:f.icon||'💡',bank:f.bank||null,parent:f.parent||null,pin:!!f.pin}));
+      store.set(FOLDER_KEY,JSON.stringify(folders));
+    }else if(folders.length){
+      clearTimeout(_supaFolderT);_supaFolderT=setTimeout(_supaUpsertFolders,500);
+    }
+  }catch(e){console.warn('[supa:folders:load]',e);}
 }
 async function supaLoadIdeas(userId){
   try{
@@ -1213,7 +1249,7 @@ bindBtn(deleteFolderBtn,()=>{
   folders=folders.filter(x=>x.id!==editingFolderId);
   if(curFilter===editingFolderId)curFilter='all';
   collapsed.delete(editingFolderId);saveCollapsed();
-  editingFolderId=null;saveFolders();saveIdeas();closeAll();renderFilters();renderIdeas();toast('Classeur supprimé');
+  supaDeleteFolder(editingFolderId);editingFolderId=null;saveFolders();saveIdeas();closeAll();renderFilters();renderIdeas();toast('Classeur supprimé');
 });
 
 // ----- Paywall / abonnement -----
@@ -1287,7 +1323,7 @@ function openManage(){
       if(!confirm('Supprimer « '+f.name+' » ?'+(kids.length?' Ses '+kids.length+' sous-classeur(s) remonteront d\'un niveau.':'')+' Les '+countIn(f.id)+' idée(s) passeront dans « Sans classeur ».'))return;
       ideas.forEach(i=>{if(i.folder===f.id)i.folder=null;});
       kids.forEach(c=>{c.parent=f.parent||null;});
-      folders=folders.filter(x=>x.id!==f.id);if(curFilter===f.id)curFilter='all';
+      supaDeleteFolder(f.id);folders=folders.filter(x=>x.id!==f.id);if(curFilter===f.id)curFilter='all';
       saveFolders();saveIdeas();openManage();renderFilters();renderIdeas();
     };
     manageList.appendChild(row);
@@ -1472,8 +1508,9 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
       else{premium=false;store.set('flow_premium','0');}
     }catch(e){}
     updateQuotaUI();
+    await supaLoadFolders(session.user.id);
     await supaLoadIdeas(session.user.id);
-    renderIdeas();updateHeadPill();
+    renderFilters();renderIdeas();updateHeadPill();
   }else if(event==='SIGNED_OUT'){
     _currentUserId=null;
     USER_NAME='';applyGreeting();
