@@ -705,17 +705,13 @@ function canAddIdea(){ensureQuotaDay();return premium||quota.count<FREE_IDEAS;}
 function ideasLeft(){ensureQuotaDay();return Math.max(0,FREE_IDEAS-quota.count);}
 function canAddFolder(){return premium||folders.length<FREE_FOLDERS;}
 
-let _supaFolderT=null;
 function saveFolders(){
   store.set(FOLDER_KEY,JSON.stringify(folders));
-  clearTimeout(_supaFolderT);
-  _supaFolderT=setTimeout(_supaUpsertFolders,1000);
+  _supaUpsertFolders();
 }
-let _supaT=null;
 function saveIdeas(){
   store.set(IDEA_KEY,JSON.stringify(ideas));
-  clearTimeout(_supaT);
-  _supaT=setTimeout(_supaUpsertIdeas,1000);
+  _supaUpsertIdeas();
 }
 async function _supaUpsertIdeas(){
   try{
@@ -768,7 +764,7 @@ async function supaLoadFolders(userId){
       folders=data.map(f=>({id:f.id,name:f.name,icon:f.icon||'💡',bank:f.bank||null,parent:f.parent||null,pin:!!f.pin}));
       store.set(FOLDER_KEY,JSON.stringify(folders));
     }else if(folders.length){
-      clearTimeout(_supaFolderT);_supaFolderT=setTimeout(_supaUpsertFolders,500);
+      _supaUpsertFolders();
     }
   }catch(e){console.warn('[supa:folders:load]',e);}
 }
@@ -794,7 +790,7 @@ async function supaLoadIdeas(userId){
     store.set(IDEA_KEY,JSON.stringify(ideas));
     if(merged.length>remote.length){
       // Il y avait des idées locales non synchronisées — les pousser vers Supabase
-      clearTimeout(_supaT);_supaT=setTimeout(_supaUpsertIdeas,500);
+      _supaUpsertIdeas();
     }
   }catch(e){console.warn('[supa:load]',e);}
 }
