@@ -721,7 +721,12 @@ async function _supaUpsertIdeas(){
   try{
     const uid=_currentUserId;
     if(!uid||!ideas.length)return;
-    const rows=ideas.map(i=>({...i,user_id:uid}));
+    const rows=ideas.map(i=>({
+      id:i.id,user_id:uid,title:i.title||'',text:i.text||'',raw:i.raw||'',
+      folder:i.folder||null,created:i.created,pin:!!i.pin,
+      subs:i.subs||[],tasks:i.tasks||[],rating:i.rating||0,
+      archived:!!i.archived,ai:!!i.ai
+    }));
     const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
     if(error)throw error;
   }catch(e){console.warn('[supa:save]',e);}
