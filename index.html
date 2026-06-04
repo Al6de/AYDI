@@ -720,7 +720,8 @@ function saveIdeas(){
 async function _supaUpsertIdeas(){
   try{
     const uid=_currentUserId;
-    if(!uid||!ideas.length)return;
+    if(!uid){toast('⚠️ Sync: pas de user ID');return;}
+    if(!ideas.length)return;
     const rows=ideas.map(i=>({
       id:i.id,user_id:uid,title:i.title||'',text:i.text||'',raw:i.raw||'',
       folder:i.folder||null,created:i.created,pin:!!i.pin,
@@ -728,7 +729,8 @@ async function _supaUpsertIdeas(){
       archived:!!i.archived,ai:!!i.ai
     }));
     const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
-    if(error)throw error;
+    if(error){toast('❌ Sync erreur: '+error.message);throw error;}
+    toast('✓ '+rows.length+' idées synchro');
   }catch(e){console.warn('[supa:save]',e);}
 }
 async function supaDeleteIdea(id){
