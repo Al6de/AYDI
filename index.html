@@ -1534,6 +1534,14 @@ if(_urlParams.get('cancelled')==='true'){
 }
 
 renderFilters();renderIdeas();updateQuotaUI();
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&_currentUserId){
+    supaLoadFolders(_currentUserId).then(()=>{
+      supaLoadIdeas(_currentUserId).then(()=>{renderFilters();renderIdeas();updateHeadPill();});
+    });
+  }
+});
 </script>
 </body>
 </html>
