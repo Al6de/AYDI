@@ -423,6 +423,8 @@
   .ob-form .btn{margin-top:8px}
   .ob-foot{text-align:center;font-size:11.5px;color:var(--text-3);margin-top:18px;line-height:1.5}
   .ob-toggle{background:none;border:none;color:var(--accent);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;margin-top:14px;text-decoration:underline;text-underline-offset:2px;padding:0;width:100%;text-align:center;display:block}
+  .toast-el{position:fixed;left:50%;transform:translateX(-50%) translateY(12px);bottom:calc(var(--nav-h) + 14px);background:var(--surface-3);border:1px solid var(--border-strong);color:var(--text);font-family:var(--sans);font-size:13.5px;font-weight:500;padding:10px 18px;border-radius:30px;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;z-index:9999;opacity:0;transition:opacity .22s ease,transform .22s ease;pointer-events:none}
+  .toast-el.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -725,9 +727,9 @@ async function _supaUpsertIdeas(){
       archived:!!i.archived,ai:!!i.ai
     }));
     const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
-    if(error){toast('❌ Sync erreur: '+error.message);throw error;}
+    if(error){toast('❌ Sync: '+error.message);console.error('[supa:ideas]',error);return;}
     toast('✓ '+rows.length+' idées synchro');
-  }catch(e){console.warn('[supa:save]',e);}
+  }catch(e){console.error('[supa:save]',e);toast('❌ Sync: '+e.message);}
 }
 async function supaDeleteIdea(id){
   try{
@@ -1365,7 +1367,15 @@ function bindBtn(id,fn){
   el.addEventListener('click',function(e){e.preventDefault();fn.call(this,e);});
 }
 
-function toast(){}
+let _toastTimer=null;
+function toast(msg){
+  let el=document.getElementById('_toast');
+  if(!el){el=document.createElement('div');el.id='_toast';el.className='toast-el';document.querySelector('.phone').appendChild(el);}
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
 
 // ===== Deck de revue (swipe) =====
 const swipeDeck=document.getElementById('swipeDeck'),swipeStage=document.getElementById('swipeStage'),swipeProg=document.getElementById('swipeProg'),swipeRate=document.getElementById('swipeRate'),swipeControls=document.getElementById('swipeControls');
