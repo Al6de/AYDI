@@ -436,6 +436,7 @@
       <div class="greet">
         <div class="hello" id="hello">Prêt à capturer</div>
         <h1 id="greetMain">Bonjour Alcide</h1>
+        <div id="uid-badge" style="font-size:10px;color:var(--text-3);opacity:.55;margin-top:3px;font-family:var(--mono);letter-spacing:.04em"></div>
       </div>
       <div class="head-pills">
         <div class="head-pill" id="headPill"><span class="d"></span><span id="todayPill"></span><svg class="hp-rev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg></div>
@@ -776,8 +777,9 @@ async function supaLoadIdeas(userId){
     if(!uid){console.warn('[supaLoadIdeas] no user id');return;}
     console.log('[supaLoadIdeas] chargement pour user:',uid);
     const {data,error}=await _supa.from('ideas').select('*').eq('user_id',uid);
-    if(error){console.error('[supaLoadIdeas] erreur:',error);throw error;}
-    console.log('[supaLoadIdeas]',data.length,'idée(s) trouvée(s) dans Supabase');
+    if(error){console.error('[supaLoadIdeas] erreur:',error);toast('❌ Load: '+error.message);throw error;}
+    console.log('[supaLoadIdeas]',data.length,'idée(s) pour uid',uid);
+    toast('📥 Supabase: '+data.length+' idée(s) — uid '+uid.slice(0,8));
     const remote=data.map(r=>({
       id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
       folder:r.folder||null,created:r.created,
@@ -1506,13 +1508,17 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
   if(window.location.hash)window.history.replaceState({},document.title,window.location.pathname);
   if(session&&session.user){
     _currentUserId=session.user.id;
+    const _uidShort=session.user.id.slice(0,8);
+    const _uidBadge=document.getElementById('uid-badge');
+    if(_uidBadge)_uidBadge.textContent='uid: '+_uidShort;
+    console.log('[auth] user_id:',session.user.id,'email:',session.user.email,'event:',event);
     const meta=session.user.user_metadata||{};
     USER_NAME=(meta.first_name||meta.name||session.user.email.split('@')[0]||'').trim();
     store.set('flow_user_name',USER_NAME);
     applyGreeting();updateHeadPill();
     onboard.classList.remove('show');
     showScreen('capture');
-    if(event==='SIGNED_IN')toast('Bienvenue '+USER_NAME+' 👋');
+    toast((event==='SIGNED_IN'?'Bienvenue '+USER_NAME+' 👋  ':'')+'uid: '+_uidShort);
     // Vérification premium (liste hardcodée + profiles table)
     try{
       const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id,email:session.user.email})});
