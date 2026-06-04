@@ -726,11 +726,12 @@ async function _supaUpsertIdeas(){
       subs:i.subs||[],tasks:i.tasks||[],rating:i.rating||0,
       archived:!!i.archived,ai:!!i.ai
     }));
+    console.error('[supaSave] uid=',uid,'rows=',rows.length);
     const {error}=await _supa.from('ideas').upsert(rows,{onConflict:'id'});
-    console.log('[supaSaveIdea] ERROR:',JSON.stringify(error));
-    if(error){toast('❌ Sync: '+error.message);return;}
+    console.error('[supaSave] error=',JSON.stringify(error));
+    if(error){toast('❌ '+error.code+': '+error.message);return;}
     toast('✓ '+rows.length+' idées synchro');
-  }catch(e){console.log('[supaSaveIdea] EXCEPTION:',e?.message,JSON.stringify(e));toast('❌ Sync: '+e?.message);}
+  }catch(e){console.error('[supaSave] EXCEPTION',e?.message);toast('❌ Exception: '+e?.message);}
 }
 async function supaDeleteIdea(id){
   try{
