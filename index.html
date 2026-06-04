@@ -1524,16 +1524,23 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     onboard.classList.remove('show');
     showScreen('capture');
     toast((event==='SIGNED_IN'?'Bienvenue '+USER_NAME+' 👋  ':'')+'uid: '+_uidShort);
-    // Vérification premium (liste hardcodée + profiles table)
+    // Vérification premium — timeout 3s pour ne pas bloquer le chargement
+    console.error('[auth] checkpoint 1 — avant premium check');
     try{
-      const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id,email:session.user.email})});
+      const _ctrl=new AbortController();
+      const _tmo=setTimeout(()=>_ctrl.abort(),3000);
+      const _pr=await fetch('/api/check-premium',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:session.user.id,email:session.user.email}),signal:_ctrl.signal});
+      clearTimeout(_tmo);
       const _pd=await _pr.json();
       if(_pd.premium){premium=true;store.set('flow_premium','1');}
       else{premium=false;store.set('flow_premium','0');}
-    }catch(e){}
+    }catch(e){console.error('[auth] premium check ignoré:',e.name);}
+    console.error('[auth] checkpoint 2 — avant supaLoad');
     updateQuotaUI();
     await supaLoadFolders(session.user.id);
+    console.error('[auth] checkpoint 3 — après supaLoadFolders');
     await supaLoadIdeas(session.user.id);
+    console.error('[auth] checkpoint 4 — après supaLoadIdeas');
     renderFilters();renderIdeas();updateHeadPill();
     setupRealtimeSync();
   }else if(event==='SIGNED_OUT'){
