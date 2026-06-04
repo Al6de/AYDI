@@ -1558,20 +1558,43 @@ renderFilters();renderIdeas();updateQuotaUI();
 
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&_currentUserId){
+    // Fallback de rattrapage si le realtime a raté des changements pendant la mise en veille
     supaLoadFolders(_currentUserId).then(()=>{
       supaLoadIdeas(_currentUserId).then(()=>{renderFilters();renderIdeas();updateHeadPill();});
     });
   }
 });
 
+let _realtimeChannel=null;
 function setupRealtimeSync(){
   if(!_currentUserId)return;
-  _supa.channel('db-sync')
+  // Toujours détruire le canal existant avant d'en créer un nouveau
+  if(_realtimeChannel){_supa.removeChannel(_realtimeChannel);_realtimeChannel=null;}
+
+  function _mapIdeaRow(r){
+    return {id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
+      folder:r.folder||null,created:r.created,
+      subs:Array.isArray(r.subs)?r.subs:[],tasks:Array.isArray(r.tasks)?r.tasks:[],
+      rating:r.rating||0,archived:!!r.archived,pin:!!r.pin,ai:!!r.ai};
+  }
+
+  _realtimeChannel=_supa.channel('db-sync-'+_currentUserId)
     .on('postgres_changes',{event:'*',schema:'public',table:'ideas',filter:'user_id=eq.'+_currentUserId},
-      ()=>supaLoadIdeas(_currentUserId).then(()=>{renderIdeas();updateHeadPill();}))
+      payload=>{
+        const {eventType,new:nr,old:or}=payload;
+        if(eventType==='DELETE'){
+          ideas=ideas.filter(i=>i.id!==or.id);
+        }else if(nr){
+          const idea=_mapIdeaRow(nr);
+          const idx=ideas.findIndex(i=>i.id===idea.id);
+          if(idx>=0)ideas[idx]=idea; else ideas.push(idea);
+        }
+        store.set(IDEA_KEY,JSON.stringify(ideas));
+        renderIdeas();updateHeadPill();
+      })
     .on('postgres_changes',{event:'*',schema:'public',table:'folders',filter:'user_id=eq.'+_currentUserId},
       ()=>supaLoadFolders(_currentUserId).then(()=>{renderFilters();renderIdeas();}))
-    .subscribe();
+    .subscribe(status=>{console.log('[realtime] status=',status);});
 }
 </script>
 </body>
