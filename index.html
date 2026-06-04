@@ -666,7 +666,8 @@
 <script>
 const _supa = window.supabase.createClient(
   'https://unconepyykjytwqsxkov.supabase.co',
-  'sb_publishable_WNi1YAGp_Vv0CiNaHKDHHA_niHm2549'
+  'sb_publishable_WNi1YAGp_Vv0CiNaHKDHHA_niHm2549',
+  {auth:{detectSessionInUrl:true,persistSession:true,autoRefreshToken:true,storageKey:'aydi-auth'}}
 );
 const mem={};
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
@@ -726,16 +727,19 @@ async function _supaUpsertIdeas(){
       subs:i.subs||[],tasks:i.tasks||[],rating:i.rating||0,
       archived:!!i.archived,ai:!!i.ai
     }));
-    console.error('[upsert1] uid=',uid,'rows=',rows.length);
-    const _builder=_supa.from('ideas');
-    console.error('[upsert2] from() ok');
-    const _query=_builder.upsert(rows,{onConflict:'id'});
-    console.error('[upsert3] upsert() ok, about to await');
-    const {error}=await _query;
-    console.error('[upsert4] done, error=',JSON.stringify(error));
+    const _timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('token_timeout')),7000));
+    const {error}=await Promise.race([_supa.from('ideas').upsert(rows,{onConflict:'id'}),_timeout]);
     if(error){toast('❌ '+error.code+': '+error.message);return;}
     toast('✓ '+rows.length+' idées synchro');
-  }catch(e){console.error('[upsertX] EXCEPTION type=',typeof e,'msg=',e?.message,'name=',e?.name,'str=',String(e));toast('❌ Ex: '+e?.name+' '+e?.message);}
+  }catch(e){
+    if(e?.message==='token_timeout'){
+      toast('⚠️ Session expirée — reconnecte-toi');
+      setTimeout(()=>_supa.auth.signOut(),1500);
+    }else{
+      toast('❌ '+e?.message);
+    }
+    console.error('[supaSave]',e?.message);
+  }
 }
 async function supaDeleteIdea(id){
   try{
