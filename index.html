@@ -672,6 +672,7 @@ const _supa = window.supabase.createClient(
 const mem={};
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return mem[k]??null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
 const IDEA_KEY='flow_ideas_v2', FOLDER_KEY='flow_folders_v2';
+let _currentUserId=null;
 
 const BANKS={
   tiktok:['tiktok','reel','reels','video','vidéo','short','shorts','hook','script','montage','viral','story','instagram','insta','youtube','contenu','post','format','trend','tendance','caption','tournage','filmer','clip','editing'],
@@ -819,7 +820,6 @@ function fmtDate(ts){
   return d.getDate()+" "+MM[d.getMonth()]+" · "+h+":"+m;
 }
 let USER_NAME = (store.get('flow_user_name')||'').trim();
-let _currentUserId = null;
 function applyGreeting(){const hr=new Date().getHours();const word=hr<12?'Bonjour':hr<18?'Bon aprèm':'Bonsoir';document.getElementById('greetMain').textContent=USER_NAME?(word+' '+USER_NAME):word;document.getElementById('hello').textContent='Prêt à capturer';}
 applyGreeting();
 function computeStreak(){
