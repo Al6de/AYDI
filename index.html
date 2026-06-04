@@ -775,15 +775,15 @@ async function supaLoadIdeas(userId){
   try{
     const uid=userId||(await _supa.auth.getSession()).data?.session?.user?.id;
     if(!uid){console.error('[supaLoadIdeas] pas de user id !');toast('❌ Load: pas de user id');return;}
-    console.log('[supaLoadIdeas] uid=',uid);
+    console.warn('[supaLoadIdeas] uid=',uid);
     const {data,error,status,statusText}=await _supa.from('ideas').select('*').eq('user_id',uid);
-    console.log('[supaLoadIdeas] status=',status,statusText,'data=',data,'error=',error);
+    console.warn('[supaLoadIdeas] status=',status,statusText,'nb=',data?.length,'error=',error);
     if(error){
       console.error('[supaLoadIdeas] ERREUR COMPLETE:',JSON.stringify(error));
       toast('❌ Load '+status+': '+error.message);
       throw error;
     }
-    console.log('[supaLoadIdeas]',data.length,'idée(s) trouvées');
+    console.warn('[supaLoadIdeas] OK:',data.length,'idée(s)');
     toast('📥 '+data.length+' idée(s) — uid '+uid.slice(0,8));
     const remote=data.map(r=>({
       id:r.id,title:r.title||'',text:r.text||'',raw:r.raw||'',
@@ -793,7 +793,7 @@ async function supaLoadIdeas(userId){
       rating:r.rating||0,archived:!!r.archived,pin:!!r.pin,ai:!!r.ai
     }));
     const local=JSON.parse(store.get(IDEA_KEY)||'[]');
-    console.log('[supaLoadIdeas] local=',local.length,'remote=',remote.length);
+    console.warn('[supaLoadIdeas] local=',local.length,'remote=',remote.length);
     const merged=Object.values([...local,...remote].reduce((acc,i)=>{acc[i.id]=i;return acc;},{}));
     ideas=merged;
     store.set(IDEA_KEY,JSON.stringify(ideas));
