@@ -1516,6 +1516,7 @@ _supa.auth.onAuthStateChange(async(event,session)=>{
     await supaLoadFolders(session.user.id);
     await supaLoadIdeas(session.user.id);
     renderFilters();renderIdeas();updateHeadPill();
+    setupRealtimeSync();
   }else if(event==='SIGNED_OUT'){
     _currentUserId=null;
     USER_NAME='';applyGreeting();
@@ -1547,6 +1548,16 @@ document.addEventListener('visibilitychange',()=>{
     });
   }
 });
+
+function setupRealtimeSync(){
+  if(!_currentUserId)return;
+  _supa.channel('db-sync')
+    .on('postgres_changes',{event:'*',schema:'public',table:'ideas',filter:'user_id=eq.'+_currentUserId},
+      ()=>supaLoadIdeas(_currentUserId).then(()=>{renderIdeas();updateHeadPill();}))
+    .on('postgres_changes',{event:'*',schema:'public',table:'folders',filter:'user_id=eq.'+_currentUserId},
+      ()=>supaLoadFolders(_currentUserId).then(()=>{renderFilters();renderIdeas();}))
+    .subscribe();
+}
 </script>
 </body>
 </html>
